@@ -1,0 +1,259 @@
+@model LastMinute.Consultancy.Application.Employee.EmployeeDto
+
+@{
+    ViewData["Title"] = "Employee Details";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-auto">
+     <div class="card">
+     <div class="card-header">
+       <h4 class="mb-0">@ViewData["Title"]</h4>
+    </div>
+    <div class="card-body">
+          <dl class="row">
+ <dt class="col-sm-3">Full Name:</dt>
+    <dd class="col-sm-9">
+    <strong>@Model.FullName</strong>
+            </dd>
+
+              <dt class="col-sm-3">First Name:</dt>
+        <dd class="col-sm-9">
+@Model.FirstName
+       </dd>
+
+    <dt class="col-sm-3">Last Name:</dt>
+            <dd class="col-sm-9">
+    @Model.LastName
+       </dd>
+
+ <dt class="col-sm-3">Email:</dt>
+ <dd class="col-sm-9">
+        <a href="mailto:@Model.Email" class="text-decoration-none">
+      <i class="fas fa-envelope"></i> @Model.Email
+          </a>
+     </dd>
+
+       <dt class="col-sm-3">Phone:</dt>
+     <dd class="col-sm-9">
+   @if (!string.IsNullOrEmpty(Model.Phone))
+              {
+              <a href="tel:@Model.Phone" class="text-decoration-none">
+                 <i class="fas fa-phone"></i> @Model.Phone
+      </a>
+      }
+  else
+  {
+  <em class="text-muted">No phone number provided</em>
+             }
+         </dd>
+
+        <dt class="col-sm-3">Role:</dt>
+    <dd class="col-sm-9">
+         <span class="badge bg-info">@Model.RoleName</span>
+        </dd>
+
+        <dt class="col-sm-3">Status:</dt>
+   <dd class="col-sm-9">
+ @if (Model.IsActive)
+    {
+    <span class="badge bg-success">
+            <i class="fas fa-check-circle"></i> Active
+  </span>
+             }
+       else
+       {
+          <span class="badge bg-secondary">
+        <i class="fas fa-pause-circle"></i> Inactive
+       </span>
+       }
+      </dd>
+
+   <dt class="col-sm-3">Hire Date:</dt>
+    <dd class="col-sm-9">
+    <strong>@Model.HireDate.ToString("MMMM dd, yyyy")</strong>
+        <br/>
+             <small class="text-muted">
+      @{
+     var tenure = DateTime.Now - Model.HireDate;
+var years = (int)(tenure.TotalDays / 365.25);
+        var months = (int)((tenure.TotalDays % 365.25) / 30.44);
+       }
+           @if (years > 0)
+            {
+@($"{years} year{(years != 1 ? "s" : "")}")
+      @if (months > 0)
+ {
+ @($", {months} month{(months != 1 ? "s" : "")}")
+     }
+      }
+              else if (months > 0)
+ {
+          @($"{months} month{(months != 1 ? "s" : "")}")
+               }
+        else
+   {
+        @($"{(int)tenure.TotalDays} day{((int)tenure.TotalDays != 1 ? "s" : "")}")
+      }
+    with company
+      </small>
+     </dd>
+
+     <dt class="col-sm-3">Compensation:</dt>
+           <dd class="col-sm-9">
+                <div class="row">
+         <div class="col-12">
+       <strong>Base Salary:</strong> 
+              <span class="text-success">@Model.Salary.ToString("C")</span>
+         </div>
+            @if (Model.MonthlyIncentive > 0)
+              {
+<div class="col-12">
+      <strong>Monthly Incentive:</strong> 
+     <span class="text-info">@Model.MonthlyIncentive.ToString("C")</span>
+          </div>
+             }
+        @if (Model.CommissionPercent > 0)
+        {
+      <div class="col-12">
+                <strong>Commission:</strong> 
+   <span class="text-warning">@Model.CommissionPercent.ToString("F2")%</span>
+     </div>
+  }
+             <div class="col-12 mt-2">
+     <small class="text-muted">
+              <strong>Total Monthly Base:</strong> 
+   @((Model.Salary + Model.MonthlyIncentive).ToString("C"))
+     @if (Model.CommissionPercent > 0)
+      {
+      @("(plus commission)")
+    }
+      </small>
+       </div>
+</div>
+        </dd>
+
+      <dt class="col-sm-3">Created:</dt>
+  <dd class="col-sm-9">
+     @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+      <br />
+    <small class="text-muted">by @Model.CreatedBy</small>
+     </dd>
+
+  @if (Model.ModifiedAt.HasValue)
+        {
+      <dt class="col-sm-3">Last Modified:</dt>
+       <dd class="col-sm-9">
+           @Model.ModifiedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+     <br />
+      <small class="text-muted">by @Model.ModifiedBy</small>
+       </dd>
+        }
+        </dl>
+
+              <div class="d-flex justify-content-between mt-4">
+       <a asp-action="Index" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+         <div>
+          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning me-2">
+         <i class="fas fa-edit"></i> Edit
+       </a>
+    @if (Model.IsActive)
+          {
+       <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+<i class="fas fa-user-times"></i> Deactivate
+                </a>
+           }
+         else
+          {
+      <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+<i class="fas fa-trash"></i> Delete
+      </a>
+          }
+            </div>
+  </div>
+    </div>
+       </div>
+
+            <!-- Additional Employee Information Card -->
+            <div class="card mt-4">
+       <div class="card-header">
+        <h5 class="mb-0">
+              <i class="fas fa-chart-line"></i> Employee Statistics
+                 </h5>
+       </div>
+                <div class="card-body">
+       <div class="row">
+              <div class="col-md-4 text-center">
+      <div class="border rounded p-3">
+     <h6 class="text-muted mb-2">Annual Base Salary</h6>
+    <h4 class="text-success mb-0">@((Model.Salary * 12).ToString("C"))</h4>
+                </div>
+         </div>
+ <div class="col-md-4 text-center">
+      <div class="border rounded p-3">
+      <h6 class="text-muted mb-2">Annual Incentives</h6>
+         <h4 class="text-info mb-0">@((Model.MonthlyIncentive * 12).ToString("C"))</h4>
+          </div>
+        </div>
+        <div class="col-md-4 text-center">
+ <div class="border rounded p-3">
+         <h6 class="text-muted mb-2">Total Base Package</h6>
+  <h4 class="text-primary mb-0">@(((Model.Salary + Model.MonthlyIncentive) * 12).ToString("C"))</h4>
+  @if (Model.CommissionPercent > 0)
+       {
+           <small class="text-warning">+ @Model.CommissionPercent.ToString("F1")% commission</small>
+          }
+           </div>
+      </div>
+         </div>
+    </div>
+            </div>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-area"></i> Utilization (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="utilizationChart"></canvas>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        fetch('@Url.Action("Utilization", "Employee", new { id = Model.Id })')
+            .then(r => r.json())
+            .then(data => {
+                const labels = data.map(d => d.date);
+                const values = data.map(d => d.allocationPercent);
+                const ctx = document.getElementById('utilizationChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Allocation %',
+                            data: values,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78,115,223,0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+}

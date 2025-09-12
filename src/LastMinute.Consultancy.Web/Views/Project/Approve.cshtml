@@ -1,0 +1,164 @@
+@model LastMinute.Consultancy.Application.Project.ProjectDto
+
+@{
+    ViewData["Title"] = "Approve Project";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Approve Project
+                    </h4>
+                    <p class="mb-0">Set actual start and end dates to activate the project</p>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Project Details</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Project Name:</strong></td>
+                                    <td>@Model.ProjectName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Client:</strong></td>
+                                    <td>@Model.ClientName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Budget:</strong></td>
+                                    <td>@Model.Budget.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Project Price:</strong></td>
+                                    <td>@Model.ProjectPrice.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Expected Period:</strong></td>
+                                    <td>@Model.ExpectedWorkingPeriodMonths months</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Current Status:</strong></td>
+                                    <td>
+                                        <span class="badge bg-warning">@Model.Status</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Project Notes</h5>
+                            <div class="border p-3 bg-light rounded">
+                                @if (!string.IsNullOrEmpty(Model.Notes))
+                                {
+                                    <p>@Model.Notes</p>
+                                }
+                                else
+                                {
+                                    <p class="text-muted">No notes available.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <form asp-action="Approve" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        
+                        <div class="card bg-info bg-opacity-10 border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Set Actual Project Dates</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="startDate" class="form-label">
+                                                <strong>Actual Start Date</strong> <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="startDate" name="startDate" required />
+                                            <div class="form-text">When will the project actually begin?</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="endDate" class="form-label">
+                                                <strong>Actual End Date</strong> <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="endDate" name="endDate" required />
+                                            <div class="form-text">When is the project expected to complete?</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <small>
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Note:</strong> The system will validate that the actual period doesn't deviate significantly 
+                                        from the expected period (@Model.ExpectedWorkingPeriodMonths months). 
+                                        If there's a significant difference, please review the expected period first.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 mt-3">
+                            <label for="approvalNotes" class="form-label">
+                                <strong>Approval Notes</strong>
+                            </label>
+                            <textarea class="form-control" id="approvalNotes" name="approvalNotes" rows="4" 
+                                      placeholder="Enter approval notes, special instructions, or conditions..."></textarea>
+                            <div class="form-text">
+                                These notes will be added to the project record and visible to all team members.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Projects
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Approve & Activate Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Auto-suggest end date based on start date and expected period
+        document.getElementById('startDate').addEventListener('change', function() {
+            var startDate = new Date(this.value);
+            var expectedMonths = @Model.ExpectedWorkingPeriodMonths;
+            if (startDate && expectedMonths > 0) {
+                var endDate = new Date(startDate);
+                endDate.setMonth(endDate.getMonth() + Math.ceil(expectedMonths));
+                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            }
+        });
+        
+        // Validate date range
+        function validateDates() {
+            var startDate = new Date(document.getElementById('startDate').value);
+            var endDate = new Date(document.getElementById('endDate').value);
+            
+            if (startDate && endDate && startDate >= endDate) {
+                alert('End date must be after start date.');
+                return false;
+            }
+            return true;
+        }
+        
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if (!validateDates()) {
+                e.preventDefault();
+            }
+        });
+    </script>
+}
+

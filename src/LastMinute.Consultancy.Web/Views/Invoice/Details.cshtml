@@ -1,0 +1,346 @@
+@model LastMinute.Consultancy.Application.Invoice.InvoiceDto
+
+@{
+    ViewData["Title"] = $"Invoice {Model.InvoiceNumber}";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-file-invoice me-2"></i>Invoice Details
+                        </h4>
+                        <div class="btn-group">
+                            @if (Model.Status == "Planned" || Model.Status == "Draft")
+                            {
+                                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-light">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </a>
+                            }
+                            <button class="btn btn-outline-light" onclick="window.print()">
+                                <i class="fas fa-print me-2"></i>Print
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-light">
+                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Invoice Header -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h2 class="mb-3">@Model.InvoiceNumber</h2>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Project:</strong></div>
+                                <div class="col-sm-8">@Model.ProjectName</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Client:</strong></div>
+                                <div class="col-sm-8">@Model.ClientName</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Created:</strong></div>
+                                <div class="col-sm-8">@Model.CreatedAt.ToString("MMM dd, yyyy") by @Model.CreatedBy</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Invoice Date:</strong></div>
+                                <div class="col-sm-8">@Model.InvoiceDate.ToString("MMM dd, yyyy")</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Due Date:</strong></div>
+                                <div class="col-sm-8">
+                                    @Model.DueDate.ToString("MMM dd, yyyy")
+                                    @if (Model.DueDate < DateTime.Today && Model.Status != "Paid" && Model.Status != "Cancelled")
+                                    {
+                                        <span class="badge bg-danger ms-2">
+                                            @((DateTime.Today - Model.DueDate).Days) days overdue
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Status:</strong></div>
+                                <div class="col-sm-8">
+                                    @{
+                                        var badgeClass = Model.Status switch
+                                        {
+                                            "Planned" => "bg-secondary",
+                                            "Draft" => "bg-info",
+                                            "Issued" => "bg-primary",
+                                            "Sent" => "bg-warning",
+                                            "Paid" => "bg-success",
+                                            "PartiallyPaid" => "bg-warning",
+                                            "Overdue" => "bg-danger",
+                                            "Cancelled" => "bg-dark",
+                                            _ => "bg-secondary"
+                                        };
+                                    }
+                                    <span class="badge @badgeClass fs-6">@Model.Status</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    @if (Model.Status != "Cancelled")
+                    {
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="btn-group">
+                                    @if (Model.Status == "Planned" || Model.Status == "Draft")
+                                    {
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#confirmModal">
+                                            <i class="fas fa-check me-2"></i>Confirm & Issue
+                                        </button>
+                                    }
+                                    @if (Model.Status == "Issued")
+                                    {
+                                        <form asp-action="MarkAsSent" asp-route-id="@Model.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-info">
+                                                <i class="fas fa-paper-plane me-2"></i>Mark as Sent
+                                            </button>
+                                        </form>
+                                    }
+                                    @if (Model.Status != "Paid")
+                                    {
+                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                                            <i class="fas fa-dollar-sign me-2"></i>Record Payment
+                                        </button>
+                                    }
+                                    @if (Model.Status != "Paid")
+                                    {
+                                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                            <i class="fas fa-times me-2"></i>Cancel Invoice
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Line Items -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Line Items</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Description</th>
+                                            <th class="text-center">Type</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-end">Unit Price</th>
+                                            <th class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var lineItem in Model.LineItems)
+                                        {
+                                            <tr>
+                                                <td>@lineItem.Description</td>
+                                                <td class="text-center">
+                                                    @{
+                                                        var typeClass = lineItem.LineItemType switch
+                                                        {
+                                                            "Labor" => "bg-primary",
+                                                            "Material" => "bg-info",
+                                                            "Expense" => "bg-warning",
+                                                            "Other" => "bg-secondary",
+                                                            _ => "bg-secondary"
+                                                        };
+                                                    }
+                                                    <span class="badge @typeClass">@lineItem.LineItemType</span>
+                                                </td>
+                                                <td class="text-center">@lineItem.Quantity.ToString("N2")</td>
+                                                <td class="text-end">$@lineItem.UnitPrice.ToString("N2")</td>
+                                                <td class="text-end"><strong>$@lineItem.Amount.ToString("N2")</strong></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Summary -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                            {
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Notes</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text" style="white-space: pre-line;">@Model.Notes</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Invoice Summary</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td>Subtotal:</td>
+                                            <td class="text-end">$@Model.SubTotal.ToString("N2")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Tax (@((Model.SubTotal > 0 ? (Model.TaxAmount / Model.SubTotal) * 100 : 0).ToString("N1"))%):</td>
+                                            <td class="text-end">$@Model.TaxAmount.ToString("N2")</td>
+                                        </tr>
+                                        <tr class="table-primary">
+                                            <td><strong>Total:</strong></td>
+                                            <td class="text-end"><strong>$@Model.TotalAmount.ToString("N2")</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Confirm" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will change the invoice status to "Issued" and it will be ready to send to the client.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirmation Notes (Optional)</label>
+                        <textarea name="confirmationNotes" class="form-control" rows="3" 
+                                  placeholder="Add any notes about the confirmation..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm & Issue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="MarkAsPaid" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Record Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Payment Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="amount" class="form-control" 
+                                   step="0.01" max="@Model.TotalAmount" value="@Model.TotalAmount" required />
+                        </div>
+                        <div class="form-text">Invoice total: $@Model.TotalAmount.ToString("N2")</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Payment Reference</label>
+                        <input type="text" name="paymentReference" class="form-control" 
+                               placeholder="Check number, transaction ID, etc." />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancel Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Are you sure you want to cancel this invoice? This action cannot be undone.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cancellation Reason</label>
+                        <textarea name="cancellationReason" class="form-control" rows="3" 
+                                  placeholder="Please provide a reason for cancellation..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Invoice</button>
+                    <button type="submit" class="btn btn-danger">Cancel Invoice</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        @@media print {
+            .btn, .modal, .card-header .btn-group, .alert {
+                display: none !important;
+            }
+            
+            .card {
+                border: none !important;
+                box-shadow: none !important;
+            }
+            
+            .container-fluid {
+                padding: 0 !important;
+            }
+        }
+    </style>
+}

@@ -1,0 +1,206 @@
+@model IEnumerable<LastMinute.Consultancy.Application.ActualAssignment.ActualAssignmentDto>
+
+@{
+    ViewData["Title"] = "Actual Assignments";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Actual Assignments
+                        </h4>
+                        <a asp-action="Create" class="btn btn-light">
+                            <i class="fas fa-plus me-2"></i>New Assignment
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Employee</th>
+                                        <th>Role</th>
+                                        <th>Planned Position</th>
+                                        <th>Allocation</th>
+                                        <th>Start</th>
+                                        <th>End</th>
+                                        <th>Cost Warning</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var assignment in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@assignment.ProjectName</strong>
+                                            </td>
+                                            <td>@assignment.EmployeeName</td>
+                                            <td>@assignment.RoleName</td>
+                                            <td>
+                                                <small class="text-muted">@assignment.PlannedTeamSlotDescription</small>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="width: 100px; height: 20px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                         style="width: @assignment.AllocationPercent%"
+                                                         aria-valuenow="@assignment.AllocationPercent"
+                                                         aria-valuemin="0" aria-valuemax="100">
+                                                        @assignment.AllocationPercent%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>@assignment.StartDate.ToShortDateString()</td>
+                                            <td>@assignment.EndDate?.ToShortDateString()</td>
+                                            <td>
+                                                @if (assignment.CostCheckWarning)
+                                                {
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                                        Cost Diff: @assignment.CostDifferenceAmount.ToString("C")
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No issues</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @switch (assignment.Status)
+                                                {
+                                                    case LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned:
+                                                        <span class="badge bg-warning">Pending Approval</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Active:
+                                                        <span class="badge bg-success">Active</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Completed:
+                                                        <span class="badge bg-primary">Completed</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.AssignmentStatus.OnHold:
+                                                        <span class="badge bg-secondary">On Hold</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Cancelled:
+                                                        <span class="badge bg-danger">Cancelled</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-secondary">@assignment.Status</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    @if (assignment.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned)
+                                                    {
+                                                        <form asp-action="Approve" asp-route-id="@assignment.Id" method="post" style="display: inline;">
+                                                            <button type="submit" class="btn btn-sm btn-success" title="Approve Assignment">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        </form>
+                                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal" 
+                                                                data-assignment-id="@assignment.Id" data-employee-name="@assignment.EmployeeName" title="Reject Assignment">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    }
+                                                    <a asp-action="Details" asp-route-id="@assignment.Id" class="btn btn-sm btn-outline-info" title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    @if (assignment.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Active)
+                                                    {
+                                                        <a asp-controller="TimeEntry" asp-action="Create" asp-route-assignmentId="@assignment.Id" class="btn btn-sm btn-outline-success" title="Log Time">
+                                                            <i class="fas fa-clock"></i>
+                                                        </a>
+                                                        <a asp-action="Unassign" asp-route-id="@assignment.Id" class="btn btn-sm btn-warning" title="Unassign">
+                                                            <i class="fas fa-user-slash"></i>
+                                                        </a>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No assignments found</h5>
+                            <p class="text-muted">Start by creating your first assignment.</p>
+                            <a asp-action="Create" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create First Assignment
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Reject" method="post">
+                <input type="hidden" id="rejectAssignmentId" name="id" />
+                <div class="modal-body">
+                    <p>Are you sure you want to reject the assignment for <span id="rejectEmployeeName"></span>?</p>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason for rejection:</label>
+                        <textarea id="reason" name="reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Handle reject modal
+        $('#rejectModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var assignmentId = button.data('assignment-id');
+            var employeeName = button.data('employee-name');
+            
+            var modal = $(this);
+            modal.find('#rejectAssignmentId').val(assignmentId);
+            modal.find('#rejectEmployeeName').text(employeeName);
+        });
+    </script>
+}
+

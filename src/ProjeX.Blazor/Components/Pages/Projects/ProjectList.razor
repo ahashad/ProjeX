@@ -1,0 +1,157 @@
+@page "/projects"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Project
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@attribute [Authorize]
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+
+<PageTitle>Projects - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Projects</h1>
+    <AuthorizeView Policy="ManagerOrAdmin">
+        <a href="/projects/create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Project
+        </a>
+    </AuthorizeView>
+</div>
+
+@if (projects == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@projects" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ProjectDto.ProjectName) HeaderText="Project Name" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.ClientName) HeaderText="Client" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.StartDate) HeaderText="Start Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.EndDate) HeaderText="End Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.Budget) HeaderText="Budget" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.ProjectPrice) HeaderText="Price" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.Status) HeaderText="Status" Width="120">
+                        <Template>
+                            @{
+                                var project = (context as ProjectDto);
+                                var badgeClass = GetStatusBadgeClass(project?.Status);
+                            }
+                            <span class="badge @badgeClass">@project?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var project = (context as ProjectDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/projects/details/@project?.Id" class="btn btn-outline-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <AuthorizeView Policy="ManagerOrAdmin">
+                                    <a href="/projects/edit/@project?.Id" class="btn btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(project!)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </AuthorizeView>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete the project "@selectedProject?.ProjectName"?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    private List<ProjectDto>? projects;
+    private bool showDeleteDialog = false;
+    private ProjectDto? selectedProject;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            projects = await ProjectService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading projects: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.ProjectStatus? status)
+    {
+        return status?.ToString() switch
+        {
+            "Planned" => "bg-secondary",
+            "InProgress" => "bg-primary",
+            "Completed" => "bg-success",
+            "OnHold" => "bg-warning",
+            "Cancelled" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ShowDeleteConfirmation(ProjectDto project)
+    {
+        selectedProject = project;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedProject = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedProject != null)
+        {
+            try
+            {
+                await ProjectService.DeleteAsync(selectedProject.Id);
+                await LoadProjects();
+                showDeleteDialog = false;
+                selectedProject = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting project: {ex.Message}");
+            }
+        }
+    }
+}
+

@@ -1,0 +1,117 @@
+@model LastMinute.Consultancy.Application.Deliverable.DeliverableDto
+
+@{
+    ViewData["Title"] = "Deliverable Details";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">@ViewData["Title"]</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Title:</dt>
+                        <dd class="col-sm-9">
+                            <strong>@Model.Title</strong>
+                        </dd>
+
+                        <dt class="col-sm-3">Project:</dt>
+                        <dd class="col-sm-9">
+                            @Model.ProjectName
+                        </dd>
+
+                        <dt class="col-sm-3">Status:</dt>
+                        <dd class="col-sm-9">
+                            @{
+                                var statusClass = Model.Status switch
+                                {
+                                    LastMinute.Consultancy.Domain.Enums.DeliverableStatus.Pending => "badge bg-secondary",
+                                    LastMinute.Consultancy.Domain.Enums.DeliverableStatus.InProgress => "badge bg-primary",
+                                    LastMinute.Consultancy.Domain.Enums.DeliverableStatus.Completed => "badge bg-success",
+                                    LastMinute.Consultancy.Domain.Enums.DeliverableStatus.Delayed => "badge bg-warning",
+                                    LastMinute.Consultancy.Domain.Enums.DeliverableStatus.Cancelled => "badge bg-danger",
+                                    _ => "badge bg-secondary"
+                                };
+                            }
+                            <span class="@statusClass">@Model.Status</span>
+                        </dd>
+
+                        <dt class="col-sm-3">Due Date:</dt>
+                        <dd class="col-sm-9">
+                            <strong>@Model.DueDate.ToString("MMMM dd, yyyy")</strong>
+                            @{
+                                var daysUntilDue = (Model.DueDate - DateTime.Now).Days;
+                                string dueDateClass = daysUntilDue < 0 ? "text-danger" : 
+                                                     daysUntilDue <= 7 ? "text-warning" : "text-success";
+                            }
+                            <br />
+                            <small class="@dueDateClass">
+                                @if (daysUntilDue < 0)
+                                {
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <text>@Math.Abs(daysUntilDue) days overdue</text>
+                                }
+                                else if (daysUntilDue == 0)
+                                {
+                                    <i class="fas fa-clock"></i>
+                                    <text>Due today</text>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-calendar-check"></i>
+                                    <text>@daysUntilDue days remaining</text>
+                                }
+                            </small>
+                        </dd>
+
+                        <dt class="col-sm-3">Description:</dt>
+                        <dd class="col-sm-9">
+                            @if (!string.IsNullOrEmpty(Model.Description))
+                            {
+                                <p class="mb-0">@Model.Description</p>
+                            }
+                            else
+                            {
+                                <em class="text-muted">No description provided</em>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Created:</dt>
+                        <dd class="col-sm-9">
+                            @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                            <br />
+                            <small class="text-muted">by @Model.CreatedBy</small>
+                        </dd>
+
+                        @if (Model.ModifiedAt.HasValue)
+                        {
+                            <dt class="col-sm-3">Last Modified:</dt>
+                            <dd class="col-sm-9">
+                                @Model.ModifiedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                                <br />
+                                <small class="text-muted">by @Model.ModifiedBy</small>
+                            </dd>
+                        }
+                    </dl>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                        <div>
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning me-2">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,310 @@
+@page "/projects/create"
+@page "/projects/edit/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Project
+@using LastMinute.Consultancy.Application.Project.Commands
+@using LastMinute.Consultancy.Application.Client
+@using LastMinute.Consultancy.Domain.Enums
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.Blazor.Calendars
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IProjectService ProjectService
+@inject IClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Edit Project" : "Create Project") - ProjeX</PageTitle>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>@(IsEdit ? "Edit Project" : "Create New Project")</h4>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="projectName" class="form-label">Project Name *</label>
+                                <InputText id="projectName" class="form-control" @bind-Value="model.ProjectName" />
+                                <ValidationMessage For="@(() => model.ProjectName)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientId" class="form-label">Client *</label>
+                                <InputSelect id="clientId" class="form-select" @bind-Value="model.ClientId">
+                                    <option value="">Select a client...</option>
+                                    @if (clients != null)
+                                    {
+                                        @foreach (var client in clients)
+                                        {
+                                            <option value="@client.Id">@client.ClientName</option>
+                                        }
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.ClientId)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="startDate" class="form-label">Start Date *</label>
+                                <SfDatePicker id="startDate" @bind-Value="model.StartDate" CssClass="form-control"></SfDatePicker>
+                                <ValidationMessage For="@(() => model.StartDate)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="endDate" class="form-label">End Date *</label>
+                                <SfDatePicker id="endDate" @bind-Value="model.EndDate" CssClass="form-control"></SfDatePicker>
+                                <ValidationMessage For="@(() => model.EndDate)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="budget" class="form-label">Budget *</label>
+                                <InputNumber id="budget" class="form-control" @bind-Value="model.Budget" />
+                                <ValidationMessage For="@(() => model.Budget)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="projectPrice" class="form-label">Project Price *</label>
+                                <InputNumber id="projectPrice" class="form-control" @bind-Value="model.ProjectPrice" />
+                                <ValidationMessage For="@(() => model.ProjectPrice)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="workingPeriod" class="form-label">Working Period (Months) *</label>
+                                <InputNumber id="workingPeriod" class="form-control" @bind-Value="model.ExpectedWorkingPeriodMonths" />
+                                <ValidationMessage For="@(() => model.ExpectedWorkingPeriodMonths)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <InputSelect id="status" class="form-select" @bind-Value="model.Status">
+                                    @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.Status)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <InputTextArea id="notes" class="form-control" rows="4" @bind-Value="model.Notes" />
+                        <ValidationMessage For="@(() => model.Notes)" />
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-save me-2"></i>
+                            }
+                            @(IsEdit ? "Update" : "Create") Project
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Help</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Project Name:</strong> A descriptive name for the project.</p>
+                <p><strong>Client:</strong> The client organization for this project.</p>
+                <p><strong>Budget:</strong> Internal budget allocated for the project.</p>
+                <p><strong>Project Price:</strong> The price quoted to the client.</p>
+                <p><strong>Working Period:</strong> Expected duration in months.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private ProjectFormModel model = new();
+    private List<ClientDto>? clients;
+    private bool isSubmitting = false;
+
+    private bool IsEdit => Id.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+        if (IsEdit && Id.HasValue)
+        {
+            await LoadProject(Id.Value);
+        }
+        else
+        {
+            // Set default dates
+            model.StartDate = DateTime.Today;
+            model.EndDate = DateTime.Today.AddMonths(3);
+        }
+    }
+
+    private async Task LoadClients()
+    {
+        try
+        {
+            clients = await ClientService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading clients: {ex.Message}");
+        }
+    }
+
+    private async Task LoadProject(Guid id)
+    {
+        try
+        {
+            var project = await ProjectService.GetByIdAsync(id);
+            if (project != null)
+            {
+                model = new ProjectFormModel
+                {
+                    Id = project.Id,
+                    ProjectName = project.ProjectName,
+                    ClientId = project.ClientId,
+                    StartDate = project.StartDate,
+                    EndDate = project.EndDate,
+                    Budget = project.Budget,
+                    ProjectPrice = project.ProjectPrice,
+                    ExpectedWorkingPeriodMonths = project.ExpectedWorkingPeriodMonths,
+                    Status = project.Status,
+                    Notes = project.Notes
+                };
+            }
+            else
+            {
+                Navigation.NavigateTo("/projects");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading project: {ex.Message}");
+            Navigation.NavigateTo("/projects");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateCommand = new UpdateProjectCommand
+                {
+                    Id = model.Id,
+                    ProjectName = model.ProjectName,
+                    ClientId = model.ClientId,
+                    StartDate = model.StartDate,
+                    EndDate = model.EndDate,
+                    Budget = model.Budget,
+                    ProjectPrice = model.ProjectPrice,
+                    ExpectedWorkingPeriodMonths = model.ExpectedWorkingPeriodMonths,
+                    Status = model.Status,
+                    Notes = model.Notes
+                };
+                await ProjectService.UpdateAsync(updateCommand);
+            }
+            else
+            {
+                var createCommand = new CreateProjectCommand
+                {
+                    ProjectName = model.ProjectName,
+                    ClientId = model.ClientId,
+                    Budget = model.Budget,
+                    ProjectPrice = model.ProjectPrice,
+                    ExpectedWorkingPeriodMonths = model.ExpectedWorkingPeriodMonths,
+                    Status = model.Status,
+                    Notes = model.Notes
+                };
+                await ProjectService.CreateAsync(createCommand);
+            }
+
+            Navigation.NavigateTo("/projects");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving project: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/projects");
+    }
+
+    public class ProjectFormModel
+    {
+        public Guid Id { get; set; }
+        
+        [Required(ErrorMessage = "Project name is required")]
+        [StringLength(200, ErrorMessage = "Project name cannot exceed 200 characters")]
+        public string ProjectName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Client is required")]
+        public Guid ClientId { get; set; }
+        
+        [Required(ErrorMessage = "Start date is required")]
+        public DateTime StartDate { get; set; } = DateTime.Today;
+        
+        [Required(ErrorMessage = "End date is required")]
+        public DateTime EndDate { get; set; } = DateTime.Today.AddMonths(3);
+        
+        [Required(ErrorMessage = "Budget is required")]
+        [Range(0, double.MaxValue, ErrorMessage = "Budget must be positive")]
+        public decimal Budget { get; set; }
+        
+        [Required(ErrorMessage = "Project price is required")]
+        [Range(0, double.MaxValue, ErrorMessage = "Project price must be positive")]
+        public decimal ProjectPrice { get; set; }
+        
+        [Required(ErrorMessage = "Working period is required")]
+        [Range(0.1, double.MaxValue, ErrorMessage = "Working period must be greater than 0")]
+        public decimal ExpectedWorkingPeriodMonths { get; set; } = 3;
+        
+        public ProjectStatus Status { get; set; } = ProjectStatus.Planned;
+        
+        public string Notes { get; set; } = string.Empty;
+    }
+}
+

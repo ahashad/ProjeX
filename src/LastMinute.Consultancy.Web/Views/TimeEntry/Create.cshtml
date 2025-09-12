@@ -1,0 +1,154 @@
+@model LastMinute.Consultancy.Application.TimeEntry.Commands.CreateTimeEntryCommand
+@{
+    ViewData["Title"] = "Create Time Entry";
+}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Create Time Entry</h1>
+    <a asp-action="Index" asp-route-actualAssignmentId="@Model.ActualAssignmentId" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+  <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Time Entries
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+  <h6 class="m-0 font-weight-bold text-primary">Time Entry Details</h6>
+  </div>
+    <div class="card-body">
+      <form asp-action="Create" method="post" novalidate>
+     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="form-group">
+      <label asp-for="ActualAssignmentId" class="control-label">Assignment</label>
+      <select asp-for="ActualAssignmentId" asp-items="@ViewBag.ActualAssignmentId" class="form-control">
+       <option value="">-- Select Assignment --</option>
+          </select>
+   <span asp-validation-for="ActualAssignmentId" class="text-danger"></span>
+             <small class="form-text text-muted">Select the assignment you worked on.</small>
+     </div>
+
+         <div class="row">
+         <div class="col-md-6">
+       <div class="form-group">
+  <label asp-for="Date" class="control-label">Date</label>
+        <input asp-for="Date" class="form-control" type="date" />
+      <span asp-validation-for="Date" class="text-danger"></span>
+          </div>
+   </div>
+                <div class="col-md-6">
+    <div class="form-group">
+   <label asp-for="Hours" class="control-label">Hours</label>
+              <input asp-for="Hours" class="form-control" type="number" step="0.25" min="0.25" max="24" />
+     <span asp-validation-for="Hours" class="text-danger"></span>
+      <small class="form-text text-muted">Enter hours in increments of 0.25 (15 minutes).</small>
+           </div>
+ </div>
+       </div>
+
+      <div class="form-group">
+     <label asp-for="Description" class="control-label">Description</label>
+         <textarea asp-for="Description" class="form-control" rows="4" placeholder="Describe the work performed..."></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+        <small class="form-text text-muted">Provide a clear description of the work performed during this time.</small>
+    </div>
+
+         <div class="form-group">
+      <div class="form-check">
+    <input asp-for="IsBillable" class="form-check-input" type="checkbox" id="isBillable" />
+      <label asp-for="IsBillable" class="form-check-label" for="isBillable">
+        Is this time billable to the client?
+          </label>
+   </div>
+     <span asp-validation-for="IsBillable" class="text-danger"></span>
+          </div>
+
+     <div class="form-group" id="billableRateGroup" style="display: none;">
+    <label asp-for="BillableRate" class="control-label">Billable Rate (per hour)</label>
+             <div class="input-group">
+            <div class="input-group-prepend">
+            <span class="input-group-text">$</span>
+    </div>
+        <input asp-for="BillableRate" class="form-control" type="number" step="0.01" min="0" placeholder="Leave empty for default rate" />
+     </div>
+          <span asp-validation-for="BillableRate" class="text-danger"></span>
+              <small class="form-text text-muted">Leave empty to use the default hourly rate based on your salary.</small>
+     </div>
+
+<div class="form-group">
+         <button type="submit" class="btn btn-primary">
+      <i class="fas fa-save"></i> Create Time Entry
+            </button>
+           <a asp-action="Index" asp-route-actualAssignmentId="@Model.ActualAssignmentId" class="btn btn-secondary">
+  <i class="fas fa-times"></i> Cancel
+           </a>
+  </div>
+      </form>
+     </div>
+   </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+      <div class="card-header py-3">
+         <h6 class="m-0 font-weight-bold text-success">Quick Tips</h6>
+   </div>
+    <div class="card-body">
+      <div class="mb-3">
+    <h6><i class="fas fa-info-circle text-info"></i> Time Entry Guidelines</h6>
+ <ul class="small">
+   <li>Time can only be logged for active assignments</li>
+     <li>Hours are entered in 15-minute increments (0.25)</li>
+         <li>Cannot log time for future dates</li>
+        <li>Only one time entry per assignment per day</li>
+  </ul>
+              </div>
+       
+                <div class="mb-3">
+          <h6><i class="fas fa-dollar-sign text-success"></i> Billing Information</h6>
+       <ul class="small">
+                    <li>Mark time as billable if it can be charged to the client</li>
+          <li>Default rate is calculated from your monthly salary</li>
+           <li>You can override the rate if needed</li>
+ </ul>
+     </div>
+
+    <div>
+         <h6><i class="fas fa-workflow text-warning"></i> Approval Process</h6>
+            <ul class="small">
+      <li>Time entries start as "Draft"</li>
+          <li>Submit for manager approval when ready</li>
+      <li>Approved entries can be included in invoices</li>
+     </ul>
+           </div>
+    </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+  @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+        // Toggle billable rate field based on checkbox
+        function toggleBillableRate() {
+    if ($('#isBillable').is(':checked')) {
+    $('#billableRateGroup').show();
+      } else {
+       $('#billableRateGroup').hide();
+      $('#BillableRate').val('');
+           }
+     }
+
+            $('#isBillable').change(toggleBillableRate);
+            toggleBillableRate(); // Initialize on page load
+
+            // Set default date to today if not set
+            if (!$('#Date').val()) {
+       $('#Date').val(new Date().toISOString().split('T')[0]);
+            }
+  });
+    </script>
+}

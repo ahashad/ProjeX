@@ -1,0 +1,243 @@
+@page "/employees/details/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Employee
+@attribute [Authorize]
+@inject IEmployeeService EmployeeService
+@inject NavigationManager Navigation
+
+<PageTitle>Employee Details - ProjeX</PageTitle>
+
+@if (employee == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Employee Details</h1>
+        <div class="btn-group">
+            <AuthorizeView Policy="ManagerOrAdmin">
+                <a href="/employees/edit/@employee.Id" class="btn btn-warning">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </a>
+            </AuthorizeView>
+            <a href="/employees" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>@employee.FullName</h4>
+                        <span class="badge @GetStatusBadgeClass(employee.Status) fs-6">
+                            @employee.Status
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Personal Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>First Name:</strong></td>
+                                    <td>@employee.FirstName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Name:</strong></td>
+                                    <td>@employee.LastName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td><a href="mailto:@employee.Email">@employee.Email</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(employee.Phone))
+                                        {
+                                            <a href="tel:@employee.Phone">@employee.Phone</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Not provided</span>
+                                        }
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Employment Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Role:</strong></td>
+                                    <td>@employee.RoleName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Hire Date:</strong></td>
+                                    <td>@employee.HireDate.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Years of Service:</strong></td>
+                                    <td>@GetYearsOfService() years</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Active:</strong></td>
+                                    <td>
+                                        @if (employee.IsActive)
+                                        {
+                                            <span class="badge bg-success">Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">No</span>
+                                        }
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h6>Compensation</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">@employee.Salary.ToString("C")</h5>
+                                            <p class="card-text">Monthly Salary</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">@employee.MonthlyIncentive.ToString("C")</h5>
+                                            <p class="card-text">Monthly Incentive</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">@employee.CommissionPercent%</h5>
+                                            <p class="card-text">Commission Rate</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td><strong>Created By:</strong></td>
+                            <td>@employee.CreatedBy</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Created At:</strong></td>
+                            <td>@employee.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                        </tr>
+                        @if (employee.ModifiedAt.HasValue)
+                        {
+                            <tr>
+                                <td><strong>Modified By:</strong></td>
+                                <td>@employee.ModifiedBy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Modified At:</strong></td>
+                                <td>@employee.ModifiedAt.Value.ToString("MMM dd, yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/time-entries?employeeId=@employee.Id" class="btn btn-primary btn-sm">
+                            <i class="fas fa-clock me-2"></i>View Time Entries
+                        </a>
+                        <a href="/assignments?employeeId=@employee.Id" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-tasks me-2"></i>View Assignments
+                        </a>
+                        <a href="/team-planning?employeeId=@employee.Id" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-calendar me-2"></i>Team Planning
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private EmployeeDto? employee;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployee();
+    }
+
+    private async Task LoadEmployee()
+    {
+        try
+        {
+            employee = await EmployeeService.GetByIdAsync(Id);
+            if (employee == null)
+            {
+                Navigation.NavigateTo("/employees");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employee: {ex.Message}");
+            Navigation.NavigateTo("/employees");
+        }
+    }
+
+    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Entities.EmployeeStatus status)
+    {
+        return status.ToString() switch
+        {
+            "Active" => "bg-success",
+            "Inactive" => "bg-secondary",
+            "OnLeave" => "bg-warning",
+            "Terminated" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private double GetYearsOfService()
+    {
+        if (employee == null) return 0;
+        
+        var years = (DateTime.Today - employee.HireDate).TotalDays / 365.25;
+        return Math.Round(years, 1);
+    }
+}
+

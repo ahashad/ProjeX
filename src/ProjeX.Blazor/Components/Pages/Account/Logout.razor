@@ -1,0 +1,16 @@
+@page "/Account/Logout"
+@using Microsoft.AspNetCore.Identity
+@using LastMinute.Consultancy.Domain.Entities
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Logout - ProjeX</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SignInManager.SignOutAsync();
+        NavigationManager.NavigateTo("/");
+    }
+}
+

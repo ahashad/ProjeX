@@ -1,0 +1,109 @@
+@model LastMinute.Consultancy.Application.Project.ProjectDto
+
+@{
+    ViewData["Title"] = "Project Details";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">@ViewData["Title"]</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Project Name:</dt>
+                        <dd class="col-sm-9">
+                            <strong>@Model.ProjectName</strong>
+                        </dd>
+
+                        <dt class="col-sm-3">Client:</dt>
+                        <dd class="col-sm-9">
+                            @Model.ClientName
+                        </dd>
+
+                        <dt class="col-sm-3">Status:</dt>
+                        <dd class="col-sm-9">
+                            @{
+                                var statusClass = Model.Status switch
+                                {
+                                    LastMinute.Consultancy.Domain.Enums.ProjectStatus.Planned => "badge bg-info",
+                                    LastMinute.Consultancy.Domain.Enums.ProjectStatus.InProgress => "badge bg-success",
+                                    LastMinute.Consultancy.Domain.Enums.ProjectStatus.Completed => "badge bg-primary",
+                                    LastMinute.Consultancy.Domain.Enums.ProjectStatus.OnHold => "badge bg-warning",
+                                    LastMinute.Consultancy.Domain.Enums.ProjectStatus.Cancelled => "badge bg-danger",
+                                    _ => "badge bg-secondary"
+                                };
+                            }
+                            <span class="@statusClass">@Model.Status</span>
+                        </dd>
+
+                        <dt class="col-sm-3">Project Dates:</dt>
+                        <dd class="col-sm-9">
+                            <strong>Start:</strong> @Model.StartDate.ToString("MMMM dd, yyyy")<br/>
+                            <strong>End:</strong> @Model.EndDate.ToString("MMMM dd, yyyy")<br/>
+                            <small class="text-muted">
+                                Duration: @((Model.EndDate - Model.StartDate).Days) days
+                            </small>
+                        </dd>
+
+                        <dt class="col-sm-3">Budget:</dt>
+                        <dd class="col-sm-9">
+                            <strong>@Model.Budget.ToString("C")</strong>
+                        </dd>
+
+                        <dt class="col-sm-3">Notes:</dt>
+                        <dd class="col-sm-9">
+                            @if (!string.IsNullOrEmpty(Model.Notes))
+                            {
+                                <p class="mb-0">@Model.Notes</p>
+                            }
+                            else
+                            {
+                                <em class="text-muted">No notes provided</em>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Created:</dt>
+                        <dd class="col-sm-9">
+                            @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                            <br />
+                            <small class="text-muted">by @Model.CreatedBy</small>
+                        </dd>
+
+                        @if (Model.ModifiedAt.HasValue)
+                        {
+                            <dt class="col-sm-3">Last Modified:</dt>
+                            <dd class="col-sm-9">
+                                @Model.ModifiedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                                <br />
+                                <small class="text-muted">by @Model.ModifiedBy</small>
+                            </dd>
+                        }
+                    </dl>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                        <div>
+                            @if (Model.Status == LastMinute.Consultancy.Domain.Enums.ProjectStatus.Planned)
+                            {
+                                <a asp-action="Approve" asp-route-id="@Model.Id" class="btn btn-success me-2">
+                                    <i class="fas fa-check"></i> Approve & Start
+                                </a>
+                            }
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning me-2">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

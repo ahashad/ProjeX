@@ -1,0 +1,238 @@
+@page "/clients/create"
+@page "/clients/edit/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Client
+@using LastMinute.Consultancy.Application.Client.Commands
+@using LastMinute.Consultancy.Domain.Enums
+@using System.ComponentModel.DataAnnotations
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Edit Client" : "Create Client") - ProjeX</PageTitle>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>@(IsEdit ? "Edit Client" : "Create New Client")</h4>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientName" class="form-label">Client Name *</label>
+                                <InputText id="clientName" class="form-control" @bind-Value="model.ClientName" />
+                                <ValidationMessage For="@(() => model.ClientName)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contactPerson" class="form-label">Contact Person *</label>
+                                <InputText id="contactPerson" class="form-control" @bind-Value="model.ContactPerson" />
+                                <ValidationMessage For="@(() => model.ContactPerson)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <InputText id="email" type="email" class="form-control" @bind-Value="model.Email" />
+                                <ValidationMessage For="@(() => model.Email)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <InputText id="phone" class="form-control" @bind-Value="model.Phone" />
+                                <ValidationMessage For="@(() => model.Phone)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <InputSelect id="status" class="form-select" @bind-Value="model.Status">
+                                    @foreach (var status in Enum.GetValues<ClientStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.Status)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <InputTextArea id="address" class="form-control" rows="3" @bind-Value="model.Address" />
+                        <ValidationMessage For="@(() => model.Address)" />
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-save me-2"></i>
+                            }
+                            @(IsEdit ? "Update" : "Create") Client
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Help</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Client Name:</strong> The official name of the client organization.</p>
+                <p><strong>Contact Person:</strong> Primary contact person for this client.</p>
+                <p><strong>Email:</strong> Primary email address for communication.</p>
+                <p><strong>Status:</strong> Current status of the client relationship.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private ClientFormModel model = new();
+    private bool isSubmitting = false;
+
+    private bool IsEdit => Id.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit && Id.HasValue)
+        {
+            await LoadClient(Id.Value);
+        }
+    }
+
+    private async Task LoadClient(Guid id)
+    {
+        try
+        {
+            var client = await ClientService.GetByIdAsync(id);
+            if (client != null)
+            {
+                model = new ClientFormModel
+                {
+                    Id = client.Id,
+                    ClientName = client.ClientName,
+                    ContactPerson = client.ContactPerson,
+                    Email = client.Email,
+                    Phone = client.Phone,
+                    Address = client.Address,
+                    Status = client.Status
+                };
+            }
+            else
+            {
+                Navigation.NavigateTo("/clients");
+            }
+        }
+        catch (Exception ex)
+        {
+            // TODO: Add proper error handling
+            Console.WriteLine($"Error loading client: {ex.Message}");
+            Navigation.NavigateTo("/clients");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateCommand = new UpdateClientCommand
+                {
+                    Id = model.Id,
+                    ClientName = model.ClientName,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    Status = model.Status
+                };
+                await ClientService.UpdateAsync(updateCommand);
+            }
+            else
+            {
+                var createCommand = new CreateClientCommand
+                {
+                    ClientName = model.ClientName,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    Status = model.Status
+                };
+                await ClientService.CreateAsync(createCommand);
+            }
+
+            Navigation.NavigateTo("/clients");
+        }
+        catch (Exception ex)
+        {
+            // TODO: Add proper error handling/notification
+            Console.WriteLine($"Error saving client: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/clients");
+    }
+
+    public class ClientFormModel
+    {
+        public Guid Id { get; set; }
+        
+        [Required(ErrorMessage = "Client name is required")]
+        [StringLength(100, ErrorMessage = "Client name cannot exceed 100 characters")]
+        public string ClientName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Contact person is required")]
+        [StringLength(100, ErrorMessage = "Contact person cannot exceed 100 characters")]
+        public string ContactPerson { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email address")]
+        public string Email { get; set; } = string.Empty;
+        
+        [Phone(ErrorMessage = "Please enter a valid phone number")]
+        public string Phone { get; set; } = string.Empty;
+        
+        public string Address { get; set; } = string.Empty;
+        
+        public ClientStatus Status { get; set; } = ClientStatus.Active;
+    }
+}
+

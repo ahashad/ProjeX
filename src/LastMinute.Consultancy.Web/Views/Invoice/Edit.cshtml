@@ -1,0 +1,372 @@
+@model LastMinute.Consultancy.Application.Invoice.Commands.PlanInvoiceCommand
+
+@{
+    ViewData["Title"] = "Edit Invoice";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Edit Invoice
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" asp-route-id="@ViewBag.InvoiceId" method="post" id="invoiceForm">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ProjectId" class="form-label">Project</label>
+                                    <select asp-for="ProjectId" class="form-select" asp-items="ViewBag.ProjectId" id="projectSelect">
+                                        <option value="">Select a project...</option>
+                                    </select>
+                                    <span asp-validation-for="ProjectId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="clientInfo" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">Client</label>
+                                    <input type="text" class="form-control" id="clientName" readonly />
+                                    <div class="form-text">Client information will be populated automatically.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="InvoiceDate" class="form-label">Invoice Date</label>
+                                    <input asp-for="InvoiceDate" type="date" class="form-control" />
+                                    <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="DueDate" class="form-label">Due Date</label>
+                                    <input asp-for="DueDate" type="date" class="form-control" />
+                                    <span asp-validation-for="DueDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="TaxRate" class="form-label">Tax Rate</label>
+                                    <div class="input-group">
+                                        <input asp-for="TaxRate" type="number" class="form-control" step="0.01" min="0" max="1" />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <span asp-validation-for="TaxRate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Line Items Section -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Line Items</h5>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addLineItem()">
+                                        <i class="fas fa-plus me-2"></i>Add Line Item
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="lineItemsContainer">
+                                    @for (int i = 0; i < Model.LineItems.Count; i++)
+                                    {
+                                        <div class="line-item-row border rounded p-3 mb-3" data-index="@i">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Description</label>
+                                                    <input asp-for="LineItems[@i].Description" class="form-control" 
+                                                           placeholder="Description of service or product" required />
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Quantity</label>
+                                                    <input asp-for="LineItems[@i].Quantity" class="form-control quantity-input" 
+                                                           step="0.01" min="0" placeholder="1.00" required />
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Unit Price</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">$</span>
+                                                        <input asp-for="LineItems[@i].UnitPrice" class="form-control price-input" 
+                                                               step="0.01" min="0" placeholder="0.00" required />
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Type</label>
+                                                    <select asp-for="LineItems[@i].LineItemType" class="form-select">
+                                                        <option value="0">Labor</option>
+                                                        <option value="1">Material</option>
+                                                        <option value="2">Expense</option>
+                                                        <option value="3">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Amount</label>
+                                                    <div class="d-flex align-items-end">
+                                                        <input type="text" class="form-control amount-display" readonly 
+                                                               value="$@((Model.LineItems[i].Quantity * Model.LineItems[i].UnitPrice).ToString("N2"))" />
+                                                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeLineItem(@i)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                <!-- Totals Display -->
+                                <div class="row mt-4">
+                                    <div class="col-md-8"></div>
+                                    <div class="col-md-4">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td><strong>Subtotal:</strong></td>
+                                                <td class="text-end"><span id="subtotalDisplay">$0.00</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Tax:</strong></td>
+                                                <td class="text-end"><span id="taxDisplay">$0.00</span></td>
+                                            </tr>
+                                            <tr class="table-primary">
+                                                <td><strong>Total:</strong></td>
+                                                <td class="text-end"><strong><span id="totalDisplay">$0.00</span></strong></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Notes" class="form-label">Notes</label>
+                            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Enter any additional notes for this invoice..."></textarea>
+                            <span asp-validation-for="Notes" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Details" asp-route-id="@ViewBag.InvoiceId" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Details
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Update Invoice
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        let lineItemIndex = @Model.LineItems.Count;
+
+        $(document).ready(function() {
+            // Auto-update due date when invoice date changes
+            $('#InvoiceDate').change(function() {
+                const invoiceDate = new Date($(this).val());
+                if (invoiceDate) {
+                    const dueDate = new Date(invoiceDate);
+                    dueDate.setDate(dueDate.getDate() + 30); // 30 days later
+                    $('#DueDate').val(dueDate.toISOString().split('T')[0]);
+                }
+            });
+
+            // Handle project selection
+            $('#projectSelect').change(function() {
+                const projectId = $(this).val();
+                if (projectId) {
+                    loadProjectDetails(projectId);
+                } else {
+                    $('#clientInfo').hide();
+                }
+            });
+
+            // Handle tax rate changes
+            $('#TaxRate').on('input', function() {
+                calculateTotals();
+            });
+
+            // Attach event handlers to existing inputs
+            $('.quantity-input, .price-input').on('input', calculateLineItemAmount);
+
+            // Load project details if project is already selected
+            const selectedProjectId = $('#projectSelect').val();
+            if (selectedProjectId) {
+                loadProjectDetails(selectedProjectId);
+            }
+
+            // Calculate initial totals
+            calculateTotals();
+
+            // Convert tax rate display to percentage
+            const taxRateInput = document.getElementById('TaxRate');
+            if (taxRateInput) {
+                taxRateInput.addEventListener('input', function() {
+                    const value = parseFloat(this.value) || 0;
+                    // Convert to percentage for display
+                    this.nextElementSibling.textContent = (value * 100).toFixed(1) + '%';
+                });
+                // Set initial display
+                const initialValue = parseFloat(taxRateInput.value) || 0;
+                taxRateInput.nextElementSibling.textContent = (initialValue * 100).toFixed(1) + '%';
+            }
+        });
+
+        function loadProjectDetails(projectId) {
+            $.get('@Url.Action("GetProjectDetails")', { projectId: projectId })
+                .done(function(data) {
+                    $('#clientName').val(data.clientName);
+                    $('#clientInfo').show();
+                })
+                .fail(function() {
+                    $('#clientInfo').hide();
+                    alert('Error loading project details.');
+                });
+        }
+
+        function addLineItem() {
+            const template = `
+                <div class="line-item-row border rounded p-3 mb-3" data-index="${lineItemIndex}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Description</label>
+                            <input type="text" name="LineItems[${lineItemIndex}].Description" class="form-control" 
+                                   placeholder="Description of service or product" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" name="LineItems[${lineItemIndex}].Quantity" class="form-control quantity-input" 
+                                   step="0.01" min="0" placeholder="1.00" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Unit Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="LineItems[${lineItemIndex}].UnitPrice" class="form-control price-input" 
+                                       step="0.01" min="0" placeholder="0.00" required />
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Type</label>
+                            <select name="LineItems[${lineItemIndex}].LineItemType" class="form-select">
+                                <option value="0">Labor</option>
+                                <option value="1">Material</option>
+                                <option value="2">Expense</option>
+                                <option value="3">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Amount</label>
+                            <div class="d-flex align-items-end">
+                                <input type="text" class="form-control amount-display" readonly />
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeLineItem(${lineItemIndex})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#lineItemsContainer').append(template);
+            
+            // Attach event handlers to new inputs
+            const newRow = $(`.line-item-row[data-index="${lineItemIndex}"]`);
+            newRow.find('.quantity-input, .price-input').on('input', calculateLineItemAmount);
+            
+            lineItemIndex++;
+            calculateTotals();
+        }
+
+        function removeLineItem(index) {
+            $(`.line-item-row[data-index="${index}"]`).remove();
+            calculateTotals();
+        }
+
+        function calculateLineItemAmount() {
+            const row = $(this).closest('.line-item-row');
+            const quantity = parseFloat(row.find('.quantity-input').val()) || 0;
+            const unitPrice = parseFloat(row.find('.price-input').val()) || 0;
+            const amount = quantity * unitPrice;
+            
+            row.find('.amount-display').val('$' + amount.toFixed(2));
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            let subtotal = 0;
+            
+            $('.line-item-row').each(function() {
+                const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
+                const unitPrice = parseFloat($(this).find('.price-input').val()) || 0;
+                subtotal += quantity * unitPrice;
+            });
+            
+            const taxRate = parseFloat($('#TaxRate').val()) || 0;
+            const taxAmount = subtotal * taxRate;
+            const total = subtotal + taxAmount;
+            
+            $('#subtotalDisplay').text('$' + subtotal.toFixed(2));
+            $('#taxDisplay').text('$' + taxAmount.toFixed(2));
+            $('#totalDisplay').text('$' + total.toFixed(2));
+        }
+
+        // Form validation
+        $('#invoiceForm').submit(function(e) {
+            const lineItems = $('.line-item-row').length;
+            if (lineItems === 0) {
+                e.preventDefault();
+                alert('Please add at least one line item to the invoice.');
+                return false;
+            }
+            
+            let hasValidLineItems = false;
+            $('.line-item-row').each(function() {
+                const description = $(this).find('input[name$=".Description"]').val().trim();
+                const quantity = parseFloat($(this).find('input[name$=".Quantity"]').val()) || 0;
+                const unitPrice = parseFloat($(this).find('input[name$=".UnitPrice"]').val()) || 0;
+                
+                if (description && quantity > 0 && unitPrice > 0) {
+                    hasValidLineItems = true;
+                }
+            });
+            
+            if (!hasValidLineItems) {
+                e.preventDefault();
+                alert('Please ensure all line items have valid description, quantity, and unit price.');
+                return false;
+            }
+        });
+    </script>
+
+    <style>
+        .line-item-row {
+            background-color: #f8f9fa;
+        }
+        
+        .amount-display {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        
+        #clientInfo {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+}

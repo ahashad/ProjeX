@@ -1,0 +1,164 @@
+@page "/time-entries"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.TimeEntry
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@attribute [Authorize]
+@inject ITimeEntryService TimeEntryService
+@inject NavigationManager Navigation
+
+<PageTitle>Time Entries - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Time Entries</h1>
+    <a href="/time-entries/create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Log Time
+    </a>
+</div>
+
+@if (timeEntries == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@timeEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="15">
+                <GridPageSettings PageSize="15"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(TimeEntryDto.Date) HeaderText="Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.EmployeeName) HeaderText="Employee" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.ProjectName) HeaderText="Project" Width="180"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.ClientName) HeaderText="Client" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.Hours) HeaderText="Hours" Width="100" Format="N2"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.Description) HeaderText="Description" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.Status) HeaderText="Status" Width="120">
+                        <Template>
+                            @{
+                                var timeEntry = (context as TimeEntryDto);
+                                var badgeClass = GetStatusBadgeClass(timeEntry?.Status);
+                            }
+                            <span class="badge @badgeClass">@timeEntry?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(TimeEntryDto.IsBillable) HeaderText="Billable" Width="100">
+                        <Template>
+                            @{
+                                var timeEntry = (context as TimeEntryDto);
+                            }
+                            @if (timeEntry?.IsBillable == true)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="120" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var timeEntry = (context as TimeEntryDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/time-entries/edit/@timeEntry?.Id" class="btn btn-outline-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(timeEntry!)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete this time entry?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    private List<TimeEntryDto>? timeEntries;
+    private bool showDeleteDialog = false;
+    private TimeEntryDto? selectedTimeEntry;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTimeEntries();
+    }
+
+    private async Task LoadTimeEntries()
+    {
+        try
+        {
+            timeEntries = await TimeEntryService.GetTimeEntriesAsync(null, null);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading time entries: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.TimeEntryStatus? status)
+    {
+        return status?.ToString() switch
+        {
+            "Draft" => "bg-secondary",
+            "Submitted" => "bg-primary",
+            "Approved" => "bg-success",
+            "Rejected" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ShowDeleteConfirmation(TimeEntryDto timeEntry)
+    {
+        selectedTimeEntry = timeEntry;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedTimeEntry = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedTimeEntry != null)
+        {
+            try
+            {
+                await TimeEntryService.DeleteAsync(selectedTimeEntry.Id, "current-user"); // TODO: Get actual user ID
+                await LoadTimeEntries();
+                showDeleteDialog = false;
+                selectedTimeEntry = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting time entry: {ex.Message}");
+            }
+        }
+    }
+}
+

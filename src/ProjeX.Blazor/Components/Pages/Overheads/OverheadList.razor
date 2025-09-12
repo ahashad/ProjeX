@@ -1,0 +1,20 @@
+@page "/overheads"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+
+<PageTitle>Overheads - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Overheads</h1>
+    <a href="/overheads/create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Overhead
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted">Overhead management functionality will be implemented here.</p>
+        <p>This page will show company overheads and operational costs.</p>
+    </div>
+</div>
+

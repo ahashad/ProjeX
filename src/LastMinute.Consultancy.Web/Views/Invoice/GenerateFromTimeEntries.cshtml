@@ -1,0 +1,307 @@
+@model LastMinute.Consultancy.Web.Controllers.GenerateInvoiceFromTimeEntriesViewModel
+
+@{
+    ViewData["Title"] = "Generate Invoice from Time Entries";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Generate Invoice from Time Entries
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will create an invoice based on approved, billable time entries for the selected project and date range.
+                        Time entries will be automatically marked as "Invoiced" after the invoice is created.
+                    </div>
+
+                    <form asp-action="GenerateFromTimeEntries" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ProjectId" class="form-label">Project</label>
+                                    <select asp-for="ProjectId" class="form-select" asp-items="ViewBag.ProjectId" id="projectSelect">
+                                        <option value="">Select a project...</option>
+                                    </select>
+                                    <span asp-validation-for="ProjectId" class="text-danger"></span>
+                                    <div class="form-text">Only projects with approved, billable time entries can be selected.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="projectInfo" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">Client</label>
+                                    <input type="text" class="form-control" id="clientName" readonly />
+                                    <div class="form-text">Invoice will be generated for this client.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="FromDate" class="form-label">From Date</label>
+                                    <input asp-for="FromDate" type="date" class="form-control" />
+                                    <span asp-validation-for="FromDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ToDate" class="form-label">To Date</label>
+                                    <input asp-for="ToDate" type="date" class="form-control" />
+                                    <span asp-validation-for="ToDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preview Section -->
+                        <div class="card mb-4" id="previewSection" style="display: none;">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Time Entries Preview</h6>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="loadPreview()">
+                                        <i class="fas fa-refresh me-2"></i>Refresh Preview
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="previewContent">
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading preview...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Invoices
+                            </a>
+                            <div>
+                                <button type="button" class="btn btn-info me-2" onclick="loadPreview()">
+                                    <i class="fas fa-eye me-2"></i>Preview Time Entries
+                                </button>
+                                <button type="submit" class="btn btn-success" id="generateBtn" disabled>
+                                    <i class="fas fa-file-invoice me-2"></i>Generate Invoice
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // Handle project selection
+            $('#projectSelect').change(function() {
+                const projectId = $(this).val();
+                if (projectId) {
+                    loadProjectDetails(projectId);
+                    enablePreview();
+                } else {
+                    $('#projectInfo').hide();
+                    $('#previewSection').hide();
+                    $('#generateBtn').prop('disabled', true);
+                }
+            });
+
+            // Handle date changes
+            $('#FromDate, #ToDate').change(function() {
+                enablePreview();
+                $('#previewSection').hide();
+                $('#generateBtn').prop('disabled', true);
+            });
+
+            // Auto-load preview if project is pre-selected
+            const selectedProjectId = $('#projectSelect').val();
+            if (selectedProjectId) {
+                loadProjectDetails(selectedProjectId);
+                enablePreview();
+            }
+        });
+
+        function loadProjectDetails(projectId) {
+            $.get('@Url.Action("GetProjectDetails")', { projectId: projectId })
+                .done(function(data) {
+                    $('#clientName').val(data.clientName);
+                    $('#projectInfo').show();
+                })
+                .fail(function() {
+                    $('#projectInfo').hide();
+                    alert('Error loading project details.');
+                });
+        }
+
+        function enablePreview() {
+            const projectId = $('#projectSelect').val();
+            const fromDate = $('#FromDate').val();
+            const toDate = $('#ToDate').val();
+            
+            if (projectId && fromDate && toDate) {
+                $('#previewSection').show();
+                loadPreview();
+            }
+        }
+
+        function loadPreview() {
+            const projectId = $('#projectSelect').val();
+            const fromDate = $('#FromDate').val();
+            const toDate = $('#ToDate').val();
+            
+            if (!projectId || !fromDate || !toDate) {
+                alert('Please select a project and date range first.');
+                return;
+            }
+
+            $('#previewContent').html('<div class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading preview...</div>');
+            $('#generateBtn').prop('disabled', true);
+
+            // Simulate API call to get time entries preview
+            // In a real implementation, you would call an API endpoint
+            setTimeout(function() {
+                // Mock data for demonstration
+                const mockTimeEntries = [
+                    {
+                        employeeName: 'Ahmed Said',
+                        roleName: 'Project Manager',
+                        totalHours: 40,
+                        billableRate: 45000,
+                        amount: 1800000
+                    },
+                    {
+                        employeeName: 'Ali Ali',
+                        roleName: 'Senior Consultant',
+                        totalHours: 35,
+                        billableRate: 27000,
+                        amount: 945000
+                    }
+                ];
+
+                let previewHtml = `
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Role</th>
+                                    <th class="text-center">Hours</th>
+                                    <th class="text-end">Rate</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                let totalAmount = 0;
+                mockTimeEntries.forEach(entry => {
+                    totalAmount += entry.amount;
+                    previewHtml += `
+                        <tr>
+                            <td><strong>${entry.employeeName}</strong></td>
+                            <td>${entry.roleName}</td>
+                            <td class="text-center">${entry.totalHours.toFixed(1)}</td>
+                            <td class="text-end">$${entry.billableRate.toLocaleString()}</td>
+                            <td class="text-end"><strong>$${entry.amount.toLocaleString()}</strong></td>
+                        </tr>
+                    `;
+                });
+
+                previewHtml += `
+                            </tbody>
+                            <tfoot class="table-primary">
+                                <tr>
+                                    <th colspan="4">Total</th>
+                                    <th class="text-end">$${totalAmount.toLocaleString()}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+
+                if (mockTimeEntries.length > 0) {
+                    previewHtml += `
+                        <div class="alert alert-success mt-3">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Found ${mockTimeEntries.length} employee(s) with billable time entries. 
+                            Total invoice amount will be <strong>$${totalAmount.toLocaleString()}</strong> (before tax).
+                        </div>
+                    `;
+                    $('#generateBtn').prop('disabled', false);
+                } else {
+                    previewHtml = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No approved, billable time entries found for the selected project and date range.
+                        </div>
+                    `;
+                    $('#generateBtn').prop('disabled', true);
+                }
+
+                $('#previewContent').html(previewHtml);
+            }, 1000);
+        }
+
+        // Form validation
+        $('form').submit(function(e) {
+            const projectId = $('#projectSelect').val();
+            const fromDate = $('#FromDate').val();
+            const toDate = $('#ToDate').val();
+            
+            if (!projectId) {
+                e.preventDefault();
+                alert('Please select a project.');
+                return false;
+            }
+            
+            if (!fromDate || !toDate) {
+                e.preventDefault();
+                alert('Please select both from and to dates.');
+                return false;
+            }
+            
+            if (new Date(fromDate) > new Date(toDate)) {
+                e.preventDefault();
+                alert('From date cannot be later than to date.');
+                return false;
+            }
+            
+            return confirm('Are you sure you want to generate the invoice? This will mark all included time entries as "Invoiced".');
+        });
+    </script>
+
+    <style>
+        #projectInfo {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        #previewSection {
+            animation: slideDown 0.3s ease-in;
+        }
+        
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @@keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .table th, .table td {
+            vertical-align: middle;
+        }
+    </style>
+}

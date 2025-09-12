@@ -1,0 +1,209 @@
+@model LastMinute.Consultancy.Application.PlannedTeamSlot.Commands.UpdatePlannedTeamSlotCommand
+
+@{
+    ViewData["Title"] = "Edit Planned Team Slot";
+}
+
+<div class="container-fluid">
+    <div class="row">
+     <div class="col-md-10 col-lg-8 mx-auto">
+        <div class="card">
+    <div class="card-header bg-primary text-white">
+   <h4 class="mb-0">
+     <i class="fas fa-user-edit me-2"></i>@ViewData["Title"]
+  </h4>
+       </div>
+  <div class="card-body">
+ <form asp-action="Edit" method="post">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    
+       <input asp-for="Id" type="hidden" />
+        <input asp-for="RowVersion" type="hidden" />
+     
+     <div class="row">
+ <div class="col-md-6">
+      <div class="mb-3">
+      <label asp-for="ProjectId" class="form-label">Project <span class="text-danger">*</span></label>
+        <select asp-for="ProjectId" class="form-select" asp-items="ViewBag.ProjectId" required>
+     <option value="">Select a project</option>
+   </select>
+    <span asp-validation-for="ProjectId" class="text-danger"></span>
+ </div>
+  </div>
+ <div class="col-md-6">
+     <div class="mb-3">
+<label asp-for="RoleId" class="form-label">Role <span class="text-danger">*</span></label>
+     <select asp-for="RoleId" class="form-select" asp-items="ViewBag.RoleId" required>
+       <option value="">Select a role</option>
+ </select>
+<span asp-validation-for="RoleId" class="text-danger"></span>
+       </div>
+           </div>
+  </div>
+
+ <div class="row">
+   <div class="col-md-6">
+    <div class="mb-3">
+ <label asp-for="PeriodMonths" class="form-label">Period (Months) <span class="text-danger">*</span></label>
+          <input asp-for="PeriodMonths" class="form-control" type="number" step="0.1" min="0.1" max="60" placeholder="e.g., 1.5, 2.25" required />
+     <span asp-validation-for="PeriodMonths" class="text-danger"></span>
+  <div class="form-text">Duration in months (supports decimal values, e.g., 1.5 for 1.5 months)</div>
+      </div>
+        </div>
+ <div class="col-md-6">
+   <div class="mb-3">
+    <label asp-for="AllocationPercent" class="form-label">Allocation Percentage <span class="text-danger">*</span></label>
+        <div class="input-group">
+        <input asp-for="AllocationPercent" class="form-control" type="number" step="0.01" min="0" max="100" required />
+   <span class="input-group-text">%</span>
+   </div>
+      <span asp-validation-for="AllocationPercent" class="text-danger"></span>
+    <div class="form-text">Percentage of time allocated to this project</div>
+    @if (ViewBag.RemainingAllocationPercent != null)
+    {
+        <div class="mt-2">
+            <label class="form-label">Remaining Allocation</label>
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar bg-secondary" role="progressbar" style="width: @ViewBag.RemainingAllocationPercent%">
+                    @ViewBag.RemainingAllocationPercent%
+                </div>
+            </div>
+        </div>
+    }
+ </div>
+     </div>
+      </div>
+
+  <div class="row">
+  <div class="col-md-6">
+  <div class="mb-3">
+    <label asp-for="PlannedSalary" class="form-label">Monthly Planned Salary <span class="text-danger">*</span></label>
+  <div class="input-group">
+   <span class="input-group-text">$</span>
+         <input asp-for="PlannedSalary" class="form-control" type="number" step="0.01" min="0" required />
+ </div>
+   <span asp-validation-for="PlannedSalary" class="text-danger"></span>
+     </div>
+ </div>
+    <div class="col-md-6">
+      <div class="mb-3">
+  <label asp-for="PlannedIncentive" class="form-label">Monthly Planned Incentive</label>
+  <div class="input-group">
+   <span class="input-group-text">$</span>
+ <input asp-for="PlannedIncentive" class="form-control" type="number" step="0.01" min="0" />
+    </div>
+ <span asp-validation-for="PlannedIncentive" class="text-danger"></span>
+       </div>
+</div>
+      </div>
+
+ <div class="row">
+   <div class="col-md-6">
+   <div class="mb-3">
+      <label asp-for="PlannedCommissionPercent" class="form-label">Planned Commission Percentage</label>
+   <div class="input-group">
+    <input asp-for="PlannedCommissionPercent" class="form-control" type="number" step="0.01" min="0" max="100" />
+    <span class="input-group-text">%</span>
+ </div>
+     <span asp-validation-for="PlannedCommissionPercent" class="text-danger"></span>
+     <div class="form-text">Percentage of project price as commission</div>
+  </div>
+    </div>
+    </div>
+
+   <div class="alert alert-warning">
+  <h6><i class="fas fa-exclamation-triangle me-2"></i>Update Notice</h6>
+ <p class="mb-0">
+  Modifying this team slot will automatically recalculate the budget cost. If this slot has been assigned to an employee, 
+  ensure the changes align with the actual assignment details.<br>
+   <em>Period now supports fractional values (e.g., 1.5 months, 2.25 months)</em>
+  </p>
+       </div>
+
+  <div class="d-flex justify-content-between">
+   <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
+  <i class="fas fa-arrow-left me-2"></i> Back to Team Planning
+</a>
+    <button type="submit" class="btn btn-primary">
+       <i class="fas fa-save me-2"></i> Update Team Slot
+ </button>
+  </div>
+ </form>
+    </div>
+      </div>
+ </div>
+    </div>
+</div>
+
+@section Scripts {
+     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+ <script>
+        $(document).ready(function() {
+  // Auto-populate fields from role selection
+   $('#RoleId').change(function() {
+   var selectedRole = $(this).find('option:selected');
+   // You could add AJAX call here to get role defaults
+      });
+        
+      // Real-time budget calculation preview
+      function updateBudgetPreview() {
+  var salary = parseFloat($('#PlannedSalary').val()) || 0;
+  var incentive = parseFloat($('#PlannedIncentive').val()) || 0;
+      var commissionPercent = parseFloat($('#PlannedCommissionPercent').val()) || 0;
+   var periodMonths = parseFloat($('#PeriodMonths').val()) || 0; // Changed from parseInt to parseFloat
+        var allocationPercent = parseFloat($('#AllocationPercent').val()) || 0;
+     
+     // Note: This is a simplified calculation without project price
+     var monthlyTotal = salary + incentive;
+ var estimatedBudget = monthlyTotal * periodMonths * (allocationPercent / 100);
+   
+ // Update preview display (you could add a preview div to show this)
+  console.log('Estimated Budget (excluding commission):', estimatedBudget);
+      }
+   
+ $('#PlannedSalary, #PlannedIncentive, #PlannedCommissionPercent, #PeriodMonths, #AllocationPercent').on('input', updateBudgetPreview);
+
+    // Form validation improvements
+     $('form').submit(function(e) {
+         var isValid = true;
+var errorMessage = '';
+  
+      if (!$('#ProjectId').val()) {
+      isValid = false;
+   errorMessage += 'Please select a project.\n';
+     }
+       if (!$('#RoleId').val()) {
+      isValid = false;
+         errorMessage += 'Please select a role.\n';
+    }
+   if (!$('#PeriodMonths').val() || parseFloat($('#PeriodMonths').val()) <= 0) { // Changed from parseInt to parseFloat
+      isValid = false;
+  errorMessage += 'Please enter a valid period in months (minimum 0.1).\n';
+ }
+if (!$('#AllocationPercent').val() || parseFloat($('#AllocationPercent').val()) <= 0) {
+       isValid = false;
+     errorMessage += 'Please enter a valid allocation percentage.\n';
+   }
+  if (!$('#PlannedSalary').val() || parseFloat($('#PlannedSalary').val()) <= 0) {
+      isValid = false;
+ errorMessage += 'Please enter a valid planned salary.\n';
+  }
+
+   if (!isValid) {
+   alert(errorMessage);
+   e.preventDefault();
+   return false;
+ }
+ });
+
+      // Add confirmation for form submission with potential assignment conflicts
+    $('form').submit(function(e) {
+       var confirmMessage = 'Are you sure you want to update this team slot? This may affect budget calculations and assigned employees.';
+      if (!confirm(confirmMessage)) {
+        e.preventDefault();
+       return false;
+      }
+  });
+});
+   </script>
+}

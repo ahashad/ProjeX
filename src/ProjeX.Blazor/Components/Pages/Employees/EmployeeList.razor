@@ -1,0 +1,156 @@
+@page "/employees"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Employee
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@attribute [Authorize]
+@inject IEmployeeService EmployeeService
+@inject NavigationManager Navigation
+
+<PageTitle>Employees - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Employees</h1>
+    <AuthorizeView Policy="ManagerOrAdmin">
+        <a href="/employees/create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Employee
+        </a>
+    </AuthorizeView>
+</div>
+
+@if (employees == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@employees" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(EmployeeDto.FullName) HeaderText="Full Name" Width="180"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.Email) HeaderText="Email" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.Phone) HeaderText="Phone" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.RoleName) HeaderText="Role" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.HireDate) HeaderText="Hire Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.Salary) HeaderText="Salary" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(EmployeeDto.Status) HeaderText="Status" Width="120">
+                        <Template>
+                            @{
+                                var employee = (context as EmployeeDto);
+                                var badgeClass = GetStatusBadgeClass(employee?.Status);
+                            }
+                            <span class="badge @badgeClass">@employee?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var employee = (context as EmployeeDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/employees/details/@employee?.Id" class="btn btn-outline-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <AuthorizeView Policy="ManagerOrAdmin">
+                                    <a href="/employees/edit/@employee?.Id" class="btn btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(employee!)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </AuthorizeView>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete the employee "@selectedEmployee?.FullName"?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    private List<EmployeeDto>? employees;
+    private bool showDeleteDialog = false;
+    private EmployeeDto? selectedEmployee;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            employees = await EmployeeService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employees: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Entities.EmployeeStatus? status)
+    {
+        return status?.ToString() switch
+        {
+            "Active" => "bg-success",
+            "Inactive" => "bg-secondary",
+            "OnLeave" => "bg-warning",
+            "Terminated" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ShowDeleteConfirmation(EmployeeDto employee)
+    {
+        selectedEmployee = employee;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedEmployee = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedEmployee != null)
+        {
+            try
+            {
+                await EmployeeService.DeleteAsync(selectedEmployee.Id);
+                await LoadEmployees();
+                showDeleteDialog = false;
+                selectedEmployee = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting employee: {ex.Message}");
+            }
+        }
+    }
+}
+

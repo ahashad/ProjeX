@@ -1,0 +1,140 @@
+@page "/clients"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Client
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>Clients - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Clients</h1>
+    <a href="/clients/create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Client
+    </a>
+</div>
+
+@if (clients == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@clients" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ClientDto.ClientName) HeaderText="Client Name" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(ClientDto.ContactPerson) HeaderText="Contact Person" Width="180"></GridColumn>
+                    <GridColumn Field=@nameof(ClientDto.Email) HeaderText="Email" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(ClientDto.Phone) HeaderText="Phone" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(ClientDto.Status) HeaderText="Status" Width="120">
+                        <Template>
+                            @{
+                                var client = (context as ClientDto);
+                                var badgeClass = client?.Status.ToString() == "Active" ? "bg-success" : "bg-secondary";
+                            }
+                            <span class="badge @badgeClass">@client?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var client = (context as ClientDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/clients/details/@client?.Id" class="btn btn-outline-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="/clients/edit/@client?.Id" class="btn btn-outline-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(client!)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete the client "@selectedClient?.ClientName"?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    private List<ClientDto>? clients;
+    private bool showDeleteDialog = false;
+    private ClientDto? selectedClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        try
+        {
+            clients = await ClientService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Add proper error handling/logging
+            Console.WriteLine($"Error loading clients: {ex.Message}");
+        }
+    }
+
+    private void ShowDeleteConfirmation(ClientDto client)
+    {
+        selectedClient = client;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedClient = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedClient != null)
+        {
+            try
+            {
+                await ClientService.DeleteAsync(selectedClient.Id);
+                await LoadClients();
+                showDeleteDialog = false;
+                selectedClient = null;
+            }
+            catch (Exception ex)
+            {
+                // TODO: Add proper error handling/notification
+                Console.WriteLine($"Error deleting client: {ex.Message}");
+            }
+        }
+    }
+}
+

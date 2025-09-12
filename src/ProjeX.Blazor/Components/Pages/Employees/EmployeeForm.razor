@@ -1,0 +1,378 @@
+@page "/employees/create"
+@page "/employees/edit/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Employee
+@using LastMinute.Consultancy.Application.Employee.Commands
+@using LastMinute.Consultancy.Application.RolesCatalog
+@using LastMinute.Consultancy.Domain.Entities
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.Blazor.Calendars
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IEmployeeService EmployeeService
+@inject IRolesCatalogService RolesCatalogService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Edit Employee" : "Create Employee") - ProjeX</PageTitle>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>@(IsEdit ? "Edit Employee" : "Create New Employee")</h4>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstName" class="form-label">First Name *</label>
+                                <InputText id="firstName" class="form-control" @bind-Value="model.FirstName" />
+                                <ValidationMessage For="@(() => model.FirstName)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastName" class="form-label">Last Name *</label>
+                                <InputText id="lastName" class="form-control" @bind-Value="model.LastName" />
+                                <ValidationMessage For="@(() => model.LastName)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <InputText id="email" type="email" class="form-control" @bind-Value="model.Email" />
+                                <ValidationMessage For="@(() => model.Email)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <InputText id="phone" class="form-control" @bind-Value="model.Phone" />
+                                <ValidationMessage For="@(() => model.Phone)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="roleId" class="form-label">Role *</label>
+                                <InputSelect id="roleId" class="form-select" @bind-Value="model.RoleId" @onchange="OnRoleChanged">
+                                    <option value="">Select a role...</option>
+                                    @if (roles != null)
+                                    {
+                                        @foreach (var role in roles)
+                                        {
+                                            <option value="@role.Id">@role.RoleName</option>
+                                        }
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.RoleId)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="hireDate" class="form-label">Hire Date *</label>
+                                <SfDatePicker id="hireDate" @bind-Value="model.HireDate" CssClass="form-control"></SfDatePicker>
+                                <ValidationMessage For="@(() => model.HireDate)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="salary" class="form-label">Salary *</label>
+                                <InputNumber id="salary" class="form-control" @bind-Value="model.Salary" />
+                                <ValidationMessage For="@(() => model.Salary)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="monthlyIncentive" class="form-label">Monthly Incentive</label>
+                                <InputNumber id="monthlyIncentive" class="form-control" @bind-Value="model.MonthlyIncentive" />
+                                <ValidationMessage For="@(() => model.MonthlyIncentive)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="commissionPercent" class="form-label">Commission %</label>
+                                <InputNumber id="commissionPercent" class="form-control" @bind-Value="model.CommissionPercent" />
+                                <ValidationMessage For="@(() => model.CommissionPercent)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <InputSelect id="status" class="form-select" @bind-Value="model.Status">
+                                    @foreach (var status in Enum.GetValues<EmployeeStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.Status)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check mt-4">
+                                <InputCheckbox id="isActive" class="form-check-input" @bind-Value="model.IsActive" />
+                                <label for="isActive" class="form-check-label">Is Active</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-save me-2"></i>
+                            }
+                            @(IsEdit ? "Update" : "Create") Employee
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Help</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Role:</strong> Select a role to auto-populate salary and incentive defaults.</p>
+                <p><strong>Salary:</strong> Base monthly salary for the employee.</p>
+                <p><strong>Monthly Incentive:</strong> Fixed monthly incentive amount.</p>
+                <p><strong>Commission:</strong> Percentage commission on project revenue.</p>
+            </div>
+        </div>
+        
+        @if (selectedRole != null)
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Role Defaults</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Default Salary:</strong> @selectedRole.DefaultSalary.ToString("C")</p>
+                    <p><strong>Default Incentive:</strong> @selectedRole.DefaultMonthlyIncentive.ToString("C")</p>
+                    <p><strong>Commission %:</strong> @selectedRole.CommissionPercent%</p>
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ApplyRoleDefaults">
+                        Apply Defaults
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private EmployeeFormModel model = new();
+    private List<RolesCatalogDto>? roles;
+    private RolesCatalogDto? selectedRole;
+    private bool isSubmitting = false;
+
+    private bool IsEdit => Id.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        if (IsEdit && Id.HasValue)
+        {
+            await LoadEmployee(Id.Value);
+        }
+        else
+        {
+            model.HireDate = DateTime.Today;
+        }
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            roles = await RolesCatalogService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roles: {ex.Message}");
+        }
+    }
+
+    private async Task LoadEmployee(Guid id)
+    {
+        try
+        {
+            var employee = await EmployeeService.GetByIdAsync(id);
+            if (employee != null)
+            {
+                model = new EmployeeFormModel
+                {
+                    Id = employee.Id,
+                    FirstName = employee.FirstName,
+                    LastName = employee.LastName,
+                    Email = employee.Email,
+                    Phone = employee.Phone,
+                    RoleId = employee.RoleId,
+                    HireDate = employee.HireDate,
+                    Salary = employee.Salary,
+                    MonthlyIncentive = employee.MonthlyIncentive,
+                    CommissionPercent = employee.CommissionPercent,
+                    IsActive = employee.IsActive,
+                    Status = employee.Status
+                };
+                
+                selectedRole = roles?.FirstOrDefault(r => r.Id == employee.RoleId);
+            }
+            else
+            {
+                Navigation.NavigateTo("/employees");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employee: {ex.Message}");
+            Navigation.NavigateTo("/employees");
+        }
+    }
+
+    private void OnRoleChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var roleId))
+        {
+            selectedRole = roles?.FirstOrDefault(r => r.Id == roleId);
+        }
+        else
+        {
+            selectedRole = null;
+        }
+    }
+
+    private void ApplyRoleDefaults()
+    {
+        if (selectedRole != null)
+        {
+            model.Salary = selectedRole.DefaultSalary;
+            model.MonthlyIncentive = selectedRole.DefaultMonthlyIncentive;
+            model.CommissionPercent = selectedRole.CommissionPercent;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateCommand = new UpdateEmployeeCommand
+                {
+                    Id = model.Id,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    RoleId = model.RoleId,
+                    HireDate = model.HireDate,
+                    Salary = model.Salary,
+                    MonthlyIncentive = model.MonthlyIncentive,
+                    CommissionPercent = model.CommissionPercent,
+                    IsActive = model.IsActive
+                };
+                await EmployeeService.UpdateAsync(updateCommand);
+            }
+            else
+            {
+                var createCommand = new CreateEmployeeCommand
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    RoleId = model.RoleId,
+                    HireDate = model.HireDate,
+                    Salary = model.Salary,
+                    MonthlyIncentive = model.MonthlyIncentive,
+                    CommissionPercent = model.CommissionPercent,
+                    IsActive = model.IsActive
+                };
+                await EmployeeService.CreateAsync(createCommand);
+            }
+
+            Navigation.NavigateTo("/employees");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving employee: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/employees");
+    }
+
+    public class EmployeeFormModel
+    {
+        public Guid Id { get; set; }
+        
+        [Required(ErrorMessage = "First name is required")]
+        [StringLength(50, ErrorMessage = "First name cannot exceed 50 characters")]
+        public string FirstName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Last name is required")]
+        [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters")]
+        public string LastName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email address")]
+        public string Email { get; set; } = string.Empty;
+        
+        [Phone(ErrorMessage = "Please enter a valid phone number")]
+        public string Phone { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Role is required")]
+        public Guid RoleId { get; set; }
+        
+        [Required(ErrorMessage = "Hire date is required")]
+        public DateTime HireDate { get; set; } = DateTime.Today;
+        
+        [Required(ErrorMessage = "Salary is required")]
+        [Range(0, double.MaxValue, ErrorMessage = "Salary must be positive")]
+        public decimal Salary { get; set; }
+        
+        [Range(0, double.MaxValue, ErrorMessage = "Monthly incentive must be positive")]
+        public decimal MonthlyIncentive { get; set; }
+        
+        [Range(0, 100, ErrorMessage = "Commission percent must be between 0 and 100")]
+        public decimal CommissionPercent { get; set; }
+        
+        public bool IsActive { get; set; } = true;
+        
+        public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
+    }
+}
+

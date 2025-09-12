@@ -1,0 +1,341 @@
+@model LastMinute.Consultancy.Application.ActualAssignment.ActualAssignmentDto
+
+@{
+    ViewData["Title"] = "Assignment Details";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-auto">
+     <div class="card">
+        <div class="card-header">
+        <h4 class="mb-0">@ViewData["Title"]</h4>
+           </div>
+  <div class="card-body">
+  <dl class="row">
+     <dt class="col-sm-3">Assignment Status:</dt>
+          <dd class="col-sm-9">
+   @{
+    var statusClass = Model.Status switch
+      {
+    LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned => "badge bg-warning text-dark",
+ LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Active => "badge bg-success",
+    LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Completed => "badge bg-primary",
+              LastMinute.Consultancy.Domain.Enums.AssignmentStatus.OnHold => "badge bg-secondary",
+       LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Cancelled => "badge bg-danger",
+       _ => "badge bg-secondary"
+                   };
+        var statusText = Model.Status switch
+    {
+         LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned => "Pending Approval",
+     _ => Model.Status.ToString()
+          };
+      }
+     <span class="@statusClass">
+     <i class="fas fa-circle me-1"></i>
+     @statusText
+     </span>
+  @if (Model.CostCheckWarning)
+              {
+ <span class="badge bg-warning text-dark ms-2">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+       Cost Warning
+           </span>
+  }
+        </dd>
+
+    <dt class="col-sm-3">Project:</dt>
+     <dd class="col-sm-9">
+             <strong>@Model.ProjectName</strong>
+      <br/>
+          <small class="text-muted">
+                 <i class="fas fa-building me-1"></i>@Model.ClientName
+            </small>
+        <br/>
+        <small class="text-muted">
+         @Model.ProjectStartDate.ToString("MMM dd, yyyy") - @Model.ProjectEndDate.ToString("MMM dd, yyyy")
+   </small>
+                </dd>
+
+              <dt class="col-sm-3">Employee:</dt>
+             <dd class="col-sm-9">
+          <strong>@Model.EmployeeName</strong>
+            <br/>
+                 @if (!string.IsNullOrEmpty(Model.EmployeeEmail))
+          {
+  <a href="mailto:@Model.EmployeeEmail" class="text-decoration-none">
+  <i class="fas fa-envelope me-1"></i>@Model.EmployeeEmail
+          </a>
+            <br/>
+     }
+      @if (!string.IsNullOrEmpty(Model.EmployeePhone))
+ {
+           <a href="tel:@Model.EmployeePhone" class="text-decoration-none">
+    <i class="fas fa-phone me-1"></i>@Model.EmployeePhone
+ </a>
+        <br/>
+           }
+                <span class="badge bg-info">@Model.RoleName</span>
+ </dd>
+
+          <dt class="col-sm-3">Planned Position:</dt>
+        <dd class="col-sm-9">
+            <strong>@Model.PlannedTeamSlotDescription</strong>
+            <br/>
+            <small class="text-muted">
+                <strong>Planned Duration:</strong> @Model.PlannedPeriodMonths months
+                <br/>
+                <strong>Planned Allocation:</strong> @Model.PlannedAllocationPercent%
+            </small>
+        </dd>
+
+        <dt class="col-sm-3">Start Date:</dt>
+        <dd class="col-sm-9">@Model.StartDate.ToString("MMM dd, yyyy")</dd>
+        <dt class="col-sm-3">End Date:</dt>
+        <dd class="col-sm-9">@Model.EndDate?.ToString("MMM dd, yyyy")</dd>
+
+        <dt class="col-sm-3">Actual Allocation:</dt>
+        <dd class="col-sm-9">
+     <div class="d-flex align-items-center">
+ <div class="progress me-3" style="width: 200px; height: 25px;">
+   <div class="progress-bar @(Model.AllocationPercent > 80 ? "bg-warning" : "bg-success")" 
+  role="progressbar" 
+   style="width: @Model.AllocationPercent%"
+   aria-valuenow="@Model.AllocationPercent" 
+          aria-valuemin="0" 
+           aria-valuemax="100">
+  @Model.AllocationPercent%
+                 </div>
+   </div>
+   <strong>@Model.AllocationPercent%</strong>
+                @if (Model.AllocationPercent != Model.PlannedAllocationPercent)
+    {
+           <small class="text-muted ms-2">
+       (Planned: @Model.PlannedAllocationPercent%)
+      </small>
+  }
+     </div>
+     </dd>
+
+            @if (Model.CostCheckWarning)
+     {
+    <dt class="col-sm-3">Cost Difference:</dt>
+      <dd class="col-sm-9">
+         <div class="alert alert-warning d-inline-block">
+ <i class="fas fa-exclamation-triangle me-2"></i>
+                   <strong>@Model.CostDifferenceAmount.ToString("C")</strong> difference from planned cost
+     <br/>
+    <small>This assignment may impact project budget. Review recommended.</small>
+              </div>
+       </dd>
+      }
+
+      @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+   <dt class="col-sm-3">Notes:</dt>
+               <dd class="col-sm-9">
+      <div class="bg-light p-3 rounded">
+       @foreach(var line in Model.Notes.Split('\n'))
+           {
+        @line<br/>
+      }
+ </div>
+     </dd>
+      }
+
+        <dt class="col-sm-3">Request Details:</dt>
+   <dd class="col-sm-9">
+      <strong>Requested By:</strong> @Model.RequestedByUserId<br/>
+    <strong>Created:</strong> @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")<br/>
+        <small class="text-muted">by @Model.CreatedBy</small>
+                 </dd>
+
+      @if (Model.ApprovedOn.HasValue)
+            {
+  <dt class="col-sm-3">Approval Details:</dt>
+    <dd class="col-sm-9">
+           <strong>Approved By:</strong> @Model.ApprovedByUserId<br/>
+            <strong>Approved On:</strong> @Model.ApprovedOn.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+            </dd>
+   }
+
+        @if (Model.ModifiedAt.HasValue)
+          {
+     <dt class="col-sm-3">Last Modified:</dt>
+   <dd class="col-sm-9">
+ @Model.ModifiedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+  <br />
+        <small class="text-muted">by @Model.ModifiedBy</small>
+     </dd>
+                }
+     </dl>
+
+        <div class="d-flex justify-content-between mt-4">
+   <a asp-action="Index" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+       <div>
+     @if (Model.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned)
+ {
+    <form asp-action="Approve" asp-route-id="@Model.Id" method="post" style="display: inline;" 
+             onsubmit="return confirm('Are you sure you want to approve this assignment?')">
+ @Html.AntiForgeryToken()
+          <button type="submit" class="btn btn-success me-2">
+      <i class="fas fa-check"></i> Approve Assignment
+              </button>
+    </form>
+        <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
+      <i class="fas fa-times"></i> Reject Assignment
+         </button>
+        }
+            @if (Model.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Active)
+      {
+         <a asp-controller="TimeEntry" asp-action="Create" asp-route-actualAssignmentId="@Model.Id" class="btn btn-outline-success me-2">
+      <i class="fas fa-clock"></i> Log Time
+    </a>
+        <a asp-controller="TimeEntry" asp-action="Index" asp-route-actualAssignmentId="@Model.Id" class="btn btn-outline-info me-2">
+   <i class="fas fa-list"></i> View Time Entries
+          </a>
+            }
+            <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-outline-info">
+         <i class="fas fa-project-diagram"></i> View Project Assignments
+    </a>
+  </div>
+        </div>
+           </div>
+ </div>
+
+   <!-- Assignment Timeline Card -->
+            <div class="card mt-4">
+    <div class="card-header">
+              <h5 class="mb-0">
+   <i class="fas fa-history"></i> Assignment Timeline
+         </h5>
+        </div>
+   <div class="card-body">
+  <div class="timeline">
+       <div class="timeline-item">
+             <div class="timeline-marker bg-primary"></div>
+          <div class="timeline-content">
+<h6 class="timeline-title">Assignment Created</h6>
+      <p class="timeline-text">
+     Assignment created by @Model.CreatedBy
+         </p>
+       <small class="timeline-date">@Model.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+</div>
+ </div>
+            
+           @if (Model.ApprovedOn.HasValue)
+     {
+   <div class="timeline-item">
+       <div class="timeline-marker bg-success"></div>
+ <div class="timeline-content">
+           <h6 class="timeline-title">Assignment @(Model.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Cancelled ? "Rejected" : "Approved")</h6>
+        <p class="timeline-text">
+Assignment @(Model.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Cancelled ? "rejected" : "approved") by @Model.ApprovedByUserId
+     </p>
+  <small class="timeline-date">@Model.ApprovedOn.Value.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+        </div>
+  </div>
+  }
+            else if (Model.Status == LastMinute.Consultancy.Domain.Enums.AssignmentStatus.Planned)
+    {
+           <div class="timeline-item">
+        <div class="timeline-marker bg-warning"></div>
+       <div class="timeline-content">
+    <h6 class="timeline-title">Pending Approval</h6>
+        <p class="timeline-text">
+     Assignment is awaiting manager approval
+        </p>
+             </div>
+    </div>
+ }
+ </div>
+     </div>
+       </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+     <form asp-action="Reject" asp-route-id="@Model.Id" method="post">
+ @Html.AntiForgeryToken()
+                <div class="modal-body">
+  <p>Are you sure you want to reject the assignment for <strong>@Model.EmployeeName</strong>?</p>
+            <div class="mb-3">
+  <label for="reason" class="form-label">Reason for rejection:</label>
+    <textarea id="reason" name="reason" class="form-control" rows="3" required placeholder="Please provide a reason for rejecting this assignment..."></textarea>
+          </div>
+    </div>
+         <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+   <button type="submit" class="btn btn-danger">Reject Assignment</button>
+       </div>
+</form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .timeline {
+          position: relative;
+    padding-left: 3rem;
+        }
+
+        .timeline::before {
+        content: '';
+        position: absolute;
+            left: 1rem;
+      top: 0;
+            height: 100%;
+    width: 2px;
+  background: #e9ecef;
+   }
+
+        .timeline-item {
+            position: relative;
+   margin-bottom: 2rem;
+        }
+
+        .timeline-marker {
+position: absolute;
+      left: -2.5rem;
+        top: 0;
+      width: 1rem;
+            height: 1rem;
+        border-radius: 50%;
+ border: 2px solid #fff;
+            box-shadow: 0 0 0 2px #e9ecef;
+        }
+
+ .timeline-content {
+            background: #f8f9fa;
+      padding: 1rem;
+border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timeline-title {
+            margin-bottom: 0.5rem;
+       color: #495057;
+        }
+
+        .timeline-text {
+            margin-bottom: 0.5rem;
+          color: #6c757d;
+        }
+
+        .timeline-date {
+            color: #adb5bd;
+        font-size: 0.875rem;
+        }
+    </style>
+}

@@ -1,0 +1,78 @@
+@page "/roles"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.RolesCatalog
+@using Syncfusion.Blazor.Grids
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IRolesCatalogService RolesCatalogService
+@inject NavigationManager Navigation
+
+<PageTitle>Roles - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Roles Catalog</h1>
+    <a href="/roles/create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Role
+    </a>
+</div>
+
+@if (roles == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@roles" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(RolesCatalogDto.RoleName) HeaderText="Role Name" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(RolesCatalogDto.Level) HeaderText="Level" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(RolesCatalogDto.DefaultSalary) HeaderText="Default Salary" Width="150" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(RolesCatalogDto.DefaultMonthlyIncentive) HeaderText="Monthly Incentive" Width="150" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(RolesCatalogDto.CommissionPercent) HeaderText="Commission %" Width="120"></GridColumn>
+                    <GridColumn HeaderText="Actions" Width="120" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var role = (context as RolesCatalogDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/roles/edit/@role?.Id" class="btn btn-outline-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+@code {
+    private List<RolesCatalogDto>? roles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            roles = await RolesCatalogService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roles: {ex.Message}");
+        }
+    }
+}
+

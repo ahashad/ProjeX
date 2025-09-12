@@ -1,0 +1,134 @@
+@model IEnumerable<LastMinute.Consultancy.Application.Project.ProjectDto>
+
+@{
+    ViewData["Title"] = "Projects";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-project-diagram me-2"></i>Projects Management
+                        </h4>
+                        <a asp-action="Create" class="btn btn-light">
+                            <i class="fas fa-plus me-2"></i>New Project
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Project Name</th>
+                                        <th>Client</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Budget</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var project in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@project.ProjectName</strong>
+                                                @if (!string.IsNullOrEmpty(project.Notes))
+                                                {
+                                                    <br><small class="text-muted">@project.Notes.Substring(0, Math.Min(50, project.Notes.Length))@(project.Notes.Length > 50 ? "..." : "")</small>
+                                                }
+                                            </td>
+                                            <td>@project.ClientName</td>
+                                            <td>@project.StartDate.ToString("yyyy-MM-dd")</td>
+                                            <td>@project.EndDate.ToString("yyyy-MM-dd")</td>
+                                            <td>@project.Budget.ToString("C")</td>
+                                            <td>
+                                                @switch (project.Status)
+                                                {
+                                                    case LastMinute.Consultancy.Domain.Enums.ProjectStatus.Planned:
+                                                        <span class="badge bg-warning text-dark">Planned</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.ProjectStatus.InProgress:
+                                                        <span class="badge bg-success">In Progress</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.ProjectStatus.Completed:
+                                                        <span class="badge bg-primary">Completed</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.ProjectStatus.OnHold:
+                                                        <span class="badge bg-secondary">On Hold</span>
+                                                        break;
+                                                    case LastMinute.Consultancy.Domain.Enums.ProjectStatus.Cancelled:
+                                                        <span class="badge bg-danger">Cancelled</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-light text-dark">@project.Status</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a asp-action="Details" asp-route-id="@project.Id" class="btn btn-sm btn-outline-info" title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a asp-controller="PlannedTeamSlot" asp-action="Index" asp-route-projectId="@project.Id" class="btn btn-sm btn-outline-success" title="Team Planning">
+                                                        <i class="fas fa-users"></i>
+                                                    </a>
+                                                    <a asp-action="Edit" asp-route-id="@project.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    @if (project.Status == LastMinute.Consultancy.Domain.Enums.ProjectStatus.Planned)
+                                                    {
+                                                        <a asp-action="Approve" asp-route-id="@project.Id" class="btn btn-sm btn-success" title="Approve & Start">
+                                                            <i class="fas fa-check"></i>
+                                                        </a>
+                                                    }
+                                                    <a asp-action="Delete" asp-route-id="@project.Id" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No projects found</h5>
+                            <p class="text-muted">Start by creating your first project.</p>
+                            <a asp-action="Create" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create First Project
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,250 @@
+@page "/projects/details/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Project
+@attribute [Authorize]
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+
+<PageTitle>Project Details - ProjeX</PageTitle>
+
+@if (project == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Project Details</h1>
+        <div class="btn-group">
+            <AuthorizeView Policy="ManagerOrAdmin">
+                <a href="/projects/edit/@project.Id" class="btn btn-warning">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </a>
+            </AuthorizeView>
+            <a href="/projects" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>@project.ProjectName</h4>
+                        <span class="badge @GetStatusBadgeClass(project.Status) fs-6">
+                            @project.Status
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Project Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Client:</strong></td>
+                                    <td>@project.ClientName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Start Date:</strong></td>
+                                    <td>@project.StartDate.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>End Date:</strong></td>
+                                    <td>@project.EndDate.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Duration:</strong></td>
+                                    <td>@project.ExpectedWorkingPeriodMonths months</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Financial Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Budget:</strong></td>
+                                    <td>@project.Budget.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Project Price:</strong></td>
+                                    <td>@project.ProjectPrice.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Margin:</strong></td>
+                                    <td>@((project.ProjectPrice - project.Budget).ToString("C"))</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Margin %:</strong></td>
+                                    <td>@(project.ProjectPrice > 0 ? ((project.ProjectPrice - project.Budget) / project.ProjectPrice * 100).ToString("F1") + "%" : "N/A")</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(project.Notes))
+                    {
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Notes</h6>
+                                <p class="text-muted">@project.Notes</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td><strong>Created By:</strong></td>
+                            <td>@project.CreatedBy</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Created At:</strong></td>
+                            <td>@project.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                        </tr>
+                        @if (project.ModifiedAt.HasValue)
+                        {
+                            <tr>
+                                <td><strong>Modified By:</strong></td>
+                                <td>@project.ModifiedBy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Modified At:</strong></td>
+                                <td>@project.ModifiedAt.Value.ToString("MMM dd, yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/time-entries/create?projectId=@project.Id" class="btn btn-primary btn-sm">
+                            <i class="fas fa-clock me-2"></i>Log Time
+                        </a>
+                        <a href="/team-planning?projectId=@project.Id" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-users me-2"></i>Team Planning
+                        </a>
+                        <a href="/deliverables?projectId=@project.Id" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-tasks me-2"></i>Deliverables
+                        </a>
+                        <AuthorizeView Policy="ManagerOrAdmin">
+                            <a href="/invoices/create?projectId=@project.Id" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>Create Invoice
+                            </a>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Project Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Time Progress</small>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: @GetTimeProgress()%" 
+                                 aria-valuenow="@GetTimeProgress()" aria-valuemin="0" aria-valuemax="100">
+                                @GetTimeProgress().ToString("F0")%
+                            </div>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        @GetDaysElapsed() of @GetTotalDays() days elapsed
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ProjectDto? project;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+    }
+
+    private async Task LoadProject()
+    {
+        try
+        {
+            project = await ProjectService.GetByIdAsync(Id);
+            if (project == null)
+            {
+                Navigation.NavigateTo("/projects");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading project: {ex.Message}");
+            Navigation.NavigateTo("/projects");
+        }
+    }
+
+    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.ProjectStatus status)
+    {
+        return status.ToString() switch
+        {
+            "Planned" => "bg-secondary",
+            "InProgress" => "bg-primary",
+            "Completed" => "bg-success",
+            "OnHold" => "bg-warning",
+            "Cancelled" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private double GetTimeProgress()
+    {
+        if (project == null) return 0;
+        
+        var totalDays = (project.EndDate - project.StartDate).TotalDays;
+        var elapsedDays = (DateTime.Today - project.StartDate).TotalDays;
+        
+        if (totalDays <= 0) return 0;
+        if (elapsedDays <= 0) return 0;
+        if (elapsedDays >= totalDays) return 100;
+        
+        return (elapsedDays / totalDays) * 100;
+    }
+
+    private int GetDaysElapsed()
+    {
+        if (project == null) return 0;
+        
+        var elapsed = (DateTime.Today - project.StartDate).TotalDays;
+        return Math.Max(0, (int)elapsed);
+    }
+
+    private int GetTotalDays()
+    {
+        if (project == null) return 0;
+        
+        return (int)(project.EndDate - project.StartDate).TotalDays;
+    }
+}
+

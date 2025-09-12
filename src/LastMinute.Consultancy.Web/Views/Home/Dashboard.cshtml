@@ -1,0 +1,351 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">Impact Partners Dashboard</h1>
+                    <p class="text-muted">Welcome back! Here's what's happening with your projects.</p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-calendar-alt me-2"></i>Last 30 Days
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                        <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                        <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
+                        <li><a class="dropdown-item" href="#">This Year</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Active Projects</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">12</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Revenue (Monthly)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">$215,000</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Hours This Week</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">142</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending Approvals</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">8</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Revenue Chart -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue Overview</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow">
+                            <a class="dropdown-item" href="#">Export Data</a>
+                            <a class="dropdown-item" href="#">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="revenueChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Status Pie Chart -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Project Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="projectStatusChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-primary"></i> Active
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-success"></i> Completed
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-info"></i> On Hold
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity & Quick Actions -->
+    <div class="row">
+        <!-- Recent Projects -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Projects</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">E-Commerce Platform Redesign</h6>
+                                <p class="mb-1 text-muted">Client: TechCorp Inc.</p>
+                                <small>Due: Dec 15, 2024</small>
+                            </div>
+                            <span class="badge bg-success rounded-pill">Active</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Mobile App Development</h6>
+                                <p class="mb-1 text-muted">Client: StartupXYZ</p>
+                                <small>Due: Jan 30, 2025</small>
+                            </div>
+                            <span class="badge bg-warning rounded-pill">Planning</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Database Migration</h6>
+                                <p class="mb-1 text-muted">Client: Enterprise Corp</p>
+                                <small>Due: Nov 20, 2024</small>
+                            </div>
+                            <span class="badge bg-info rounded-pill">In Progress</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Create", "Project")" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus-circle mb-2"></i><br>
+                                New Project
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Create", "Client")" class="btn btn-success btn-block">
+                                <i class="fas fa-user-plus mb-2"></i><br>
+                                Add Client
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Create", "TimeEntry")" class="btn btn-warning btn-block">
+                                <i class="fas fa-clock mb-2"></i><br>
+                                Log Time
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Approval", "TimeEntry")" class="btn btn-info btn-block">
+                                <i class="fas fa-user-check mb-2"></i><br>
+                                Approve Time
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Index", "Invoice")" class="btn btn-warning btn-block">
+                                <i class="fas fa-file-invoice mb-2"></i><br>
+                                View Invoices
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Create", "Invoice")" class="btn btn-success btn-block">
+                                <i class="fas fa-plus mb-2"></i><br>
+                                New Invoice
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("GenerateFromTimeEntries", "Invoice")" class="btn btn-info btn-block">
+                                <i class="fas fa-clock mb-2"></i><br>
+                                Auto Invoice
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Overdue", "Invoice")" class="btn btn-danger btn-block">
+                                <i class="fas fa-exclamation-triangle mb-2"></i><br>
+                                Overdue Bills
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="@Url.Action("Index", "Employee")" class="btn btn-info btn-block">
+                                <i class="fas fa-users mb-2"></i><br>
+                                Manage Team
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Revenue Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        datasets: [{
+            label: 'Revenue',
+            data: [180000, 195000, 210000, 185000, 220000, 235000, 215000, 240000, 225000, 250000, 235000, 260000],
+            borderColor: '#4e73df',
+            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Project Status Chart
+const statusCtx = document.getElementById('projectStatusChart').getContext('2d');
+const statusChart = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Active', 'Completed', 'On Hold'],
+        datasets: [{
+            data: [12, 8, 3],
+            backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+
+<style>
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+.text-gray-800 {
+    color: #5a5c69 !important;
+}
+.text-gray-300 {
+    color: #dddfeb !important;
+}
+.progress-sm {
+    height: 0.5rem;
+}
+.chart-area {
+    position: relative;
+    height: 320px;
+}
+.chart-pie {
+    position: relative;
+    height: 245px;
+}
+</style>
+

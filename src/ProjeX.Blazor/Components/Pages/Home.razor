@@ -1,0 +1,163 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Dashboard - ProjeX</PageTitle>
+
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-4">Dashboard</h1>
+        <p class="lead">Welcome to ProjeX - Your Project Management Solution</p>
+    </div>
+</div>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>Projects</h4>
+                                <h2>@projectCount</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-briefcase fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/projects" class="text-white text-decoration-none">
+                            View All <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card bg-success text-white mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>Clients</h4>
+                                <h2>@clientCount</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-building fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/clients" class="text-white text-decoration-none">
+                            View All <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card bg-warning text-white mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>Employees</h4>
+                                <h2>@employeeCount</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/employees" class="text-white text-decoration-none">
+                            View All <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card bg-info text-white mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>Time Entries</h4>
+                                <h2>@timeEntryCount</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/time-entries" class="text-white text-decoration-none">
+                            View All <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Projects</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Recent project activity will be displayed here.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/time-entries/create" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Log Time
+                            </a>
+                            <a href="/projects/create" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>New Project
+                            </a>
+                            <a href="/clients/create" class="btn btn-info">
+                                <i class="fas fa-plus me-2"></i>New Client
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="row">
+            <div class="col-12 text-center">
+                <h2>Welcome to ProjeX</h2>
+                <p class="lead">Please log in to access your dashboard.</p>
+                <a href="/Account/Login" class="btn btn-primary btn-lg">Login</a>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private int projectCount = 0;
+    private int clientCount = 0;
+    private int employeeCount = 0;
+    private int timeEntryCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: Load actual counts from services
+        // This is placeholder data
+        projectCount = 12;
+        clientCount = 8;
+        employeeCount = 15;
+        timeEntryCount = 45;
+    }
+}

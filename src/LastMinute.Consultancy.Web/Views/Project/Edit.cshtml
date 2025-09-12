@@ -1,0 +1,135 @@
+@model LastMinute.Consultancy.Application.Project.Commands.UpdateProjectCommand
+
+@{
+    ViewData["Title"] = "Edit Project";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">@ViewData["Title"]</h4>
+                    <p class="text-muted mb-0">Administrative editing - all fields available including actual dates.</p>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        <input asp-for="Id" type="hidden" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ProjectName" class="form-label">Project Name</label>
+                                    <input asp-for="ProjectName" class="form-control" placeholder="Enter project name" />
+                                    <span asp-validation-for="ProjectName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ClientId" class="form-label">Client</label>
+                                    <select asp-for="ClientId" class="form-select" asp-items="ViewBag.ClientId">
+                                        <option value="">Select a client</option>
+                                    </select>
+                                    <span asp-validation-for="ClientId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="StartDate" class="form-label">Actual Start Date</label>
+                                    <input asp-for="StartDate" class="form-control" type="date" />
+                                    <span asp-validation-for="StartDate" class="text-danger"></span>
+                                    <div class="form-text">Actual project start date (set during approval)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="EndDate" class="form-label">Actual End Date</label>
+                                    <input asp-for="EndDate" class="form-control" type="date" />
+                                    <span asp-validation-for="EndDate" class="text-danger"></span>
+                                    <div class="form-text">Actual project end date (set during approval)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Budget" class="form-label">Budget</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="Budget" class="form-control" type="number" step="0.01" min="0" placeholder="0.00" />
+                                    </div>
+                                    <span asp-validation-for="Budget" class="text-danger"></span>
+                                    <div class="form-text">Approved budget for project execution</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ProjectPrice" class="form-label">Project Price</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="ProjectPrice" class="form-control" type="number" step="0.01" min="0" placeholder="0.00" />
+                                    </div>
+                                    <span asp-validation-for="ProjectPrice" class="text-danger"></span>
+                                    <div class="form-text">Total price charged to client</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ExpectedWorkingPeriodMonths" class="form-label">Expected Working Period (Months)</label>
+                                    <input asp-for="ExpectedWorkingPeriodMonths" class="form-control" type="number" step="0.5" min="0.1" placeholder="0.0" />
+                                    <span asp-validation-for="ExpectedWorkingPeriodMonths" class="text-danger"></span>
+                                    <div class="form-text">Expected duration in months (accepts fractions, e.g., 2.5)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Status" class="form-label">Project Status</label>
+                                    <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<LastMinute.Consultancy.Domain.Enums.ProjectStatus>()">
+                                        <option value="">Select status</option>
+                                    </select>
+                                    <span asp-validation-for="Status" class="text-danger"></span>
+                                    <div class="form-text">Current project status</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Notes" class="form-label">Project Description & Notes</label>
+                            <textarea asp-for="Notes" class="form-control" rows="4" placeholder="Enter project description, requirements, or notes"></textarea>
+                            <span asp-validation-for="Notes" class="text-danger"></span>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Administrative Edit</h6>
+                            <p class="mb-0">
+                                <strong>Warning:</strong> This form allows editing all project fields including actual start/end dates. 
+                                Use with caution as changes may affect project planning and team assignments.
+                            </p>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

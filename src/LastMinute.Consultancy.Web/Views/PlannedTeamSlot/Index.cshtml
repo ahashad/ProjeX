@@ -1,0 +1,278 @@
+@model IEnumerable<LastMinute.Consultancy.Application.PlannedTeamSlot.PlannedTeamSlotDto>
+
+@{
+ ViewData["Title"] = "Team Planning";
+    var projectId = ViewBag.ProjectId as Guid?;
+    var totalBudgetCost = ViewBag.TotalBudgetCost as decimal? ?? 0;
+}
+
+<div class="container-fluid">
+    <div class="row">
+   <div class="col-12">
+<!-- Project Info Header -->
+  @if (projectId.HasValue && Model.Any())
+  {
+         var firstSlot = Model.First();
+  <div class="card mb-3">
+     <div class="card-body bg-light">
+    <div class="row align-items-center">
+        <div class="col-md-6">
+ <h5 class="card-title mb-1">
+   <i class="fas fa-project-diagram me-2"></i>@firstSlot.ProjectName
+   </h5>
+      <p class="card-text text-muted mb-0">Team Planning & Resource Allocation</p>
+</div>
+       <div class="col-md-6 text-md-end">
+    <div class="row">
+           <div class="col-md-6">
+        <small class="text-muted">Total Budget Cost</small>
+    <h6 class="mb-0 text-primary">@totalBudgetCost.ToString("C")</h6>
+ </div>
+           <div class="col-md-6">
+  <small class="text-muted">Team Slots</small>
+    <h6 class="mb-0 text-success">@Model.Count()</h6>
+       </div>
+ </div>
+     </div>
+       </div>
+       </div>
+ </div>
+        }
+
+     <div class="card">
+    <div class="card-header bg-success text-white">
+        <div class="d-flex justify-content-between align-items-center">
+ <h4 class="mb-0">
+         <i class="fas fa-users me-2"></i>Planned Team Slots
+  </h4>
+       <div>
+@if (projectId.HasValue)
+      {
+    <a asp-action="Create" asp-route-projectId="@projectId" class="btn btn-light me-2">
+<i class="fas fa-plus me-2"></i>Add Team Member
+  </a>
+     }
+      <a asp-controller="Project" asp-action="Index" class="btn btn-outline-light">
+  <i class="fas fa-arrow-left me-2"></i>Back to Projects
+   </a>
+         </div>
+ </div>
+</div>
+      <div class="card-body">
+   @if (TempData["Success"] != null)
+     {
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+         <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+        }
+       @if (TempData["Error"] != null)
+          {
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+         </div>
+        }
+
+ @if (Model.Any())
+{
+  <div class="table-responsive">
+      <table class="table table-hover">
+   <thead class="table-dark">
+        <tr>
+  <th>Role</th>
+  <th>Period</th>
+        <th>Allocation</th>
+        <th>Remaining</th>
+  <th>Salary</th>
+ <th>Incentive</th>
+           <th>Commission</th>
+       <th>Budget Cost</th>
+ <th>Status</th>
+      <th>Actions</th>
+  </tr>
+  </thead>
+  <tbody>
+     @foreach (var slot in Model)
+  {
+       <tr>
+    <td>
+    <div class="d-flex align-items-center">
+        <div class="role-icon me-2">
+     <i class="fas fa-user-tie text-primary"></i>
+     </div>
+  <div>
+ <strong>@slot.RoleName</strong>
+     @if (!string.IsNullOrEmpty(slot.ProjectName))
+ {
+            <br><small class="text-muted">@slot.ProjectName</small>
+    }
+   </div>
+    </div>
+     </td>
+    <td>
+<span class="badge bg-info">
+     @slot.PeriodMonths.ToString("0.##") @(slot.PeriodMonths == 1 ? "month" : "months")
+        </span>
+         </td>
+   <td>
+        <div class="progress" style="height: 20px;">
+           <div class="progress-bar" role="progressbar" style="width: @slot.AllocationPercent%">
+    @slot.AllocationPercent%
+        </div>
+      </div>
+            </td>
+   <td>
+        <div class="progress" style="height: 20px;">
+           <div class="progress-bar bg-secondary" role="progressbar" style="width: @slot.RemainingAllocationPercent%">
+    @slot.RemainingAllocationPercent%
+         </div>
+       </div>
+            </td>
+   <td class="text-end">@slot.PlannedSalary.ToString("C")</td>
+   <td class="text-end">@slot.PlannedIncentive.ToString("C")</td>
+ <td class="text-end">@slot.PlannedCommissionPercent%</td>
+   <td class="text-end">
+    <strong class="text-success">@slot.ComputedBudgetCost.ToString("C")</strong>
+    </td>
+      <td>
+            @if (slot.IsAssigned)
+   {
+        <span class="badge bg-success">
+      <i class="fas fa-user-check me-1"></i>Assigned
+   </span>
+           }
+           else
+     {
+   <span class="badge bg-warning text-dark">
+              <i class="fas fa-user-clock me-1"></i>Open
+     </span>
+}
+  </td>
+     <td>
+         <div class="btn-group" role="group">
+ <a asp-action="Edit" asp-route-id="@slot.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+        <i class="fas fa-edit"></i>
+ </a>
+     <form asp-action="Delete" asp-route-id="@slot.Id" asp-route-projectId="@slot.ProjectId" 
+       method="post" style="display: inline;" 
+       onsubmit="return confirm('Are you sure you want to delete this team slot for @slot.RoleName?');">
+       <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+   <i class="fas fa-trash"></i>
+      </button>
+     </form>
+          @if (!slot.IsAssigned)
+   {
+      <a asp-controller="ActualAssignment" asp-action="Create" 
+   asp-route-projectId="@slot.ProjectId" 
+     asp-route-roleId="@slot.RoleId"
+        asp-route-plannedTeamSlotId="@slot.Id"
+      class="btn btn-sm btn-success" title="Assign Employee">
+<i class="fas fa-user-plus"></i>
+  </a>
+        }
+   else
+     {
+        <a asp-controller="ActualAssignment" asp-action="Index" 
+      asp-route-projectId="@slot.ProjectId"
+ class="btn btn-sm btn-outline-secondary" title="View Assignments">
+   <i class="fas fa-eye"></i>
+    </a>
+  }
+ </div>
+      </td>
+ </tr>
+       }
+ </tbody>
+         <tfoot class="table-light">
+       <tr>
+       <th colspan="7" class="text-end">Total Budget Cost:</th>
+   <th class="text-end text-success">@totalBudgetCost.ToString("C")</th>
+    <th colspan="2"></th>
+    </tr>
+    </tfoot>
+     </table>
+  </div>
+
+          <!-- Summary Cards -->
+      <div class="row mt-4">
+         <div class="col-md-3">
+     <div class="card text-center border-primary">
+          <div class="card-body">
+   <h5 class="text-primary">@Model.Count()</h5>
+     <p class="card-text mb-0">Total Slots</p>
+</div>
+      </div>
+        </div>
+      <div class="col-md-3">
+  <div class="card text-center border-success">
+      <div class="card-body">
+ <h5 class="text-success">@Model.Count(s => s.IsAssigned)</h5>
+  <p class="card-text mb-0">Assigned</p>
+   </div>
+</div>
+   </div>
+         <div class="col-md-3">
+    <div class="card text-center border-warning">
+    <div class="card-body">
+      <h5 class="text-warning">@Model.Count(s => !s.IsAssigned)</h5>
+    <p class="card-text mb-0">Open Slots</p>
+       </div>
+</div>
+        </div>
+         <div class="col-md-3">
+        <div class="card text-center border-info">
+<div class="card-body">
+             <h5 class="text-info">@Model.Sum(s => s.PeriodMonths).ToString("0.##")</h5>
+    <p class="card-text mb-0">Total Months</p>
+     </div>
+       </div>
+          </div>
+      </div>
+ }
+         else
+ {
+ <div class="text-center py-5">
+       <i class="fas fa-users-cog fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">No team slots planned yet</h5>
+@if (projectId.HasValue)
+     {
+  <p class="text-muted">Start building your project team by creating the first team slot.</p>
+       <a asp-action="Create" asp-route-projectId="@projectId" class="btn btn-success">
+     <i class="fas fa-plus me-2"></i>Create First Team Slot
+  </a>
+    }
+  else
+          {
+        <p class="text-muted">Select a project to view and manage its team planning.</p>
+   <a asp-controller="Project" asp-action="Index" class="btn btn-primary">
+       <i class="fas fa-arrow-right me-2"></i>Go to Projects
+ </a>
+     }
+       </div>
+      }
+           </div>
+  </div>
+  </div>
+    </div>
+</div>
+
+@section Scripts {
+  <script>
+        $(document).ready(function() {
+   // Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+     return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+
+         // Add confirmation for delete actions
+   $('.delete-slot').on('click', function(e) {
+   var roleName = $(this).data('role-name');
+    if (!confirm(`Are you sure you want to delete the team slot for ${roleName}?`)) {
+     e.preventDefault();
+ }
+  });
+     });
+    </script>
+}

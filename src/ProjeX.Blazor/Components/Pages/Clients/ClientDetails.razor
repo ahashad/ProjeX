@@ -1,0 +1,165 @@
+@page "/clients/details/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using LastMinute.Consultancy.Application.Client
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>Client Details - ProjeX</PageTitle>
+
+@if (client == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Client Details</h1>
+        <div class="btn-group">
+            <a href="/clients/edit/@client.Id" class="btn btn-warning">
+                <i class="fas fa-edit me-2"></i>Edit
+            </a>
+            <a href="/clients" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>@client.ClientName</h4>
+                    <span class="badge @(client.Status.ToString() == "Active" ? "bg-success" : "bg-secondary")">
+                        @client.Status
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Contact Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Contact Person:</strong></td>
+                                    <td>@client.ContactPerson</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td><a href="mailto:@client.Email">@client.Email</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(client.Phone))
+                                        {
+                                            <a href="tel:@client.Phone">@client.Phone</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Not provided</span>
+                                        }
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Address</h6>
+                            @if (!string.IsNullOrEmpty(client.Address))
+                            {
+                                <p>@client.Address</p>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No address provided</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td><strong>Created By:</strong></td>
+                            <td>@client.CreatedBy</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Created At:</strong></td>
+                            <td>@client.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                        </tr>
+                        @if (client.ModifiedAt.HasValue)
+                        {
+                            <tr>
+                                <td><strong>Modified By:</strong></td>
+                                <td>@client.ModifiedBy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Modified At:</strong></td>
+                                <td>@client.ModifiedAt.Value.ToString("MMM dd, yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/projects/create?clientId=@client.Id" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-2"></i>New Project
+                        </a>
+                        <a href="/projects?clientId=@client.Id" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-briefcase me-2"></i>View Projects
+                        </a>
+                        <a href="/invoices?clientId=@client.Id" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>View Invoices
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ClientDto? client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        try
+        {
+            client = await ClientService.GetByIdAsync(Id);
+            if (client == null)
+            {
+                Navigation.NavigateTo("/clients");
+            }
+        }
+        catch (Exception ex)
+        {
+            // TODO: Add proper error handling
+            Console.WriteLine($"Error loading client: {ex.Message}");
+            Navigation.NavigateTo("/clients");
+        }
+    }
+}
+

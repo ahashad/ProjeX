@@ -1,0 +1,284 @@
+@model List<LastMinute.Consultancy.Application.TimeEntry.TimeEntryDto>
+@using LastMinute.Consultancy.Domain.Enums
+@{
+    ViewData["Title"] = "Time Entry Approvals";
+}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Time Entry Approvals</h1>
+    <div class="text-muted">
+     <i class="fas fa-clock"></i> @Model.Count entries waiting for approval
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+  @TempData["Success"]
+    <button type="button" class="close" data-dismiss="alert">
+     <span>&times;</span>
+      </button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+@TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+ </button>
+    </div>
+}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-warning">
+            <i class="fas fa-list-check"></i> Pending Time Entries (@Model.Count)
+        </h6>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+{
+       <div class="table-responsive">
+    <table class="table table-bordered" id="approvalTable" width="100%" cellspacing="0">
+     <thead>
+               <tr>
+    <th>Employee</th>
+         <th>Date</th>
+    <th>Project</th>
+         <th>Hours</th>
+         <th>Description</th>
+          <th>Billable</th>
+                 <th>Amount</th>
+       <th>Submitted</th>
+         <th>Actions</th>
+     </tr>
+          </thead>
+      <tbody>
+       @foreach (var item in Model.OrderBy(t => t.Date).ThenBy(t => t.EmployeeName))
+        {
+    <tr>
+    <td>
+   <strong>@item.EmployeeName</strong><br />
+  <small class="text-muted">@item.RoleName</small>
+               </td>
+          <td>
+  <strong>@item.Date.ToString("MMM dd")</strong><br />
+            <small class="text-muted">@item.Date.ToString("yyyy")</small>
+        </td>
+       <td>
+     <strong>@item.ProjectName</strong><br />
+     <small class="text-muted">@item.ClientName</small>
+            </td>
+           <td class="text-center">
+<span class="badge badge-info">@item.Hours.ToString("0.##")h</span>
+          </td>
+        <td>
+          <div class="description-cell">
+     @if (item.Description.Length > 60)
+                {
+       <span class="short-desc">@item.Description.Substring(0, 60)...</span>
+  <span class="full-desc" style="display: none;">@item.Description</span>
+           <br><a href="#" class="toggle-desc small text-primary">Show more</a>
+   }
+           else
+          {
+      @item.Description
+              }
+        </div>
+            </td>
+ <td class="text-center">
+    @if (item.IsBillable)
+   {
+       <i class="fas fa-dollar-sign text-success" title="Billable"></i>
+    @if (item.BillableRate.HasValue)
+          {
+   <br><small class="text-muted">$@item.BillableRate.Value.ToString("N2")/hr</small>
+       }
+     }
+          else
+              {
+       <i class="fas fa-times text-muted" title="Non-billable"></i>
+        }
+      </td>
+            <td class="text-right">
+        @if (item.IsBillable && item.BillableRate.HasValue)
+   {
+  <strong>$@((item.Hours * item.BillableRate.Value).ToString("N2"))</strong>
+      }
+              else
+         {
+          <span class="text-muted">N/A</span>
+            }
+     </td>
+         <td>
+             <small class="text-muted">
+              @item.CreatedAt.ToString("MMM dd, yyyy")<br />
+            @item.CreatedBy
+                 </small>
+     </td>
+        <td>
+       <div class="btn-group-vertical btn-group-sm" role="group">
+<a class="btn btn-outline-info btn-sm" asp-action="Details" asp-route-id="@item.Id" title="View Details">
+           <i class="fas fa-eye"></i>
+            </a>
+          
+          <button class="btn btn-success btn-sm" onclick="approveEntry('@item.Id', '@item.EmployeeName', '@item.Date.ToString("MMM dd")')" title="Approve">
+         <i class="fas fa-check"></i>
+      </button>
+  
+     <button class="btn btn-danger btn-sm" onclick="rejectEntry('@item.Id', '@item.EmployeeName', '@item.Date.ToString("MMM dd")')" title="Reject">
+        <i class="fas fa-times"></i>
+              </button>
+  </div>
+         </td>
+          </tr>
+        }
+       </tbody>
+             </table>
+       </div>
+        }
+        else
+ {
+            <div class="text-center py-5">
+       <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+    <h4 class="text-muted">All caught up!</h4>
+       <p class="text-muted">There are no time entries waiting for approval at this time.</p>
+          <a asp-controller="TimeEntry" asp-action="Index" class="btn btn-primary">
+                <i class="fas fa-list"></i> View All Time Entries
+  </a>
+     </div>
+  }
+    </div>
+</div>
+
+@if (Model.Any())
+{
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card border-left-info shadow">
+     <div class="card-body">
+ <div class="row no-gutters align-items-center">
+     <div class="col mr-2">
+          <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Hours</div>
+         <div class="h5 mb-0 font-weight-bold text-gray-800">
+  @Model.Sum(t => t.Hours).ToString("0.##") hours
+         </div>
+         </div>
+       <div class="col-auto">
+      <i class="fas fa-clock fa-2x text-gray-300"></i>
+            </div>
+       </div>
+       </div>
+            </div>
+        </div>
+    
+        <div class="col-md-4">
+      <div class="card border-left-success shadow">
+           <div class="card-body">
+    <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+      <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Billable Amount</div>
+      <div class="h5 mb-0 font-weight-bold text-gray-800">
+          $@Model.Where(t => t.IsBillable && t.BillableRate.HasValue).Sum(t => t.Hours * t.BillableRate.Value).ToString("N2")
+  </div>
+             </div>
+   <div class="col-auto">
+                  <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+   </div>
+    </div>
+       </div>
+    </div>
+     </div>
+        
+   <div class="col-md-4">
+    <div class="card border-left-warning shadow">
+              <div class="card-body">
+        <div class="row no-gutters align-items-center">
+      <div class="col mr-2">
+     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Unique Employees</div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">
+          @Model.Select(t => t.EmployeeName).Distinct().Count()
+  </div>
+ </div>
+        <div class="col-auto">
+       <i class="fas fa-users fa-2x text-gray-300"></i>
+            </div>
+  </div>
+         </div>
+   </div>
+        </div>
+    </div>
+}
+
+<!-- Hidden forms for approve/reject actions -->
+<form id="approveForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="approveId" name="id" />
+</form>
+
+<form id="rejectForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="rejectId" name="id" />
+    <input type="hidden" id="rejectReason" name="reason" />
+</form>
+
+@section Scripts {
+    <script>
+   $(document).ready(function() {
+     $('#approvalTable').DataTable({
+         "order": [[1, "asc"]], // Sort by date
+        "pageLength": 25,
+   "responsive": true,
+      "columnDefs": [
+       { "width": "15%", "targets": 0 }, // Employee
+   { "width": "8%", "targets": 1 },  // Date
+  { "width": "20%", "targets": 2 }, // Project
+        { "width": "8%", "targets": 3 },  // Hours
+          { "width": "25%", "targets": 4 }, // Description
+           { "width": "8%", "targets": 5 },  // Billable
+       { "width": "10%", "targets": 6 }, // Amount
+      { "width": "12%", "targets": 7 }, // Submitted
+              { "width": "10%", "targets": 8 }  // Actions
+        ]
+            });
+
+            // Toggle description
+     $('.toggle-desc').click(function(e) {
+           e.preventDefault();
+    var cell = $(this).closest('.description-cell');
+       var shortDesc = cell.find('.short-desc');
+             var fullDesc = cell.find('.full-desc');
+           
+ if (fullDesc.is(':visible')) {
+ fullDesc.hide();
+         shortDesc.show();
+            $(this).text('Show more');
+         } else {
+             shortDesc.hide();
+        fullDesc.show();
+     $(this).text('Show less');
+            }
+          });
+        });
+
+        function approveEntry(id, employeeName, date) {
+            if (confirm(`Approve time entry for ${employeeName} on ${date}?`)) {
+           $('#approveId').val(id);
+             $('#approveForm').attr('action', '@Url.Action("Approve")');
+     $('#approveForm').submit();
+            }
+        }
+
+        function rejectEntry(id, employeeName, date) {
+      var reason = prompt(`Please provide a reason for rejecting ${employeeName}'s time entry for ${date}:`);
+        if (reason && reason.trim()) {
+$('#rejectId').val(id);
+           $('#rejectReason').val(reason.trim());
+         $('#rejectForm').attr('action', '@Url.Action("Reject")');
+                $('#rejectForm').submit();
+      }
+        }
+    </script>
+}

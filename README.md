@@ -1,10 +1,10 @@
 # ProjeX - Modern Project Management
 
-[![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![Blazor](https://img.shields.io/badge/Blazor-Server-purple.svg)](https://blazor.net/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**ProjeX** is a comprehensive, modern web application for managing consultancy projects, built with .NET 10, Blazor Server, and Clean Architecture principles. It provides a robust platform for managing clients, projects, employees, time entries, and financials within a secure and scalable environment.
+**ProjeX** is a comprehensive, modern web application for managing consultancy projects, built with .NET 8, Blazor Server, and Clean Architecture principles. It provides a robust platform for managing clients, projects, employees, time entries, and financials within a secure and scalable environment.
 
 ## ✨ Features
 
@@ -20,7 +20,7 @@
 
 ## 🚀 Technology Stack
 
-- **Backend**: .NET 10, ASP.NET Core, Entity Framework Core
+- **Backend**: .NET 8, ASP.NET Core, Entity Framework Core
 - **Frontend**: Blazor Server, Syncfusion Blazor Components, Bootstrap 5
 - **Architecture**: Clean Architecture, Service-Based Pattern
 - **Authentication**: ASP.NET Core Identity
@@ -31,7 +31,7 @@
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (Express or higher)
 - [Git](https://git-scm.com/downloads)
 
@@ -144,5 +144,5 @@ If you have any questions or need help getting started, please open an issue or 
 
 ---
 
-**Built with ❤️ using .NET 10 and Blazor Server**
+**Built with ❤️ using .NET 8 and Blazor Server**
 

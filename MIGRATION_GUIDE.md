@@ -19,7 +19,7 @@ The first step was to thoroughly analyze the existing `LastMinute.Consultancy` s
 
 ## 3. Creating the New Blazor Project
 
-A new Blazor Server project, `ProjeX.Blazor`, was created using the .NET 10 Blazor Server template. The following steps were taken to configure the new project:
+A new Blazor Server project, `ProjeX.Blazor`, was created using the .NET 8 Blazor Server template. The following steps were taken to configure the new project:
 
 - **Project References**: References were added to the `Domain`, `Application`, and `Infrastructure` projects to reuse the existing business logic and data access layers.
 - **NuGet Packages**: Essential NuGet packages were installed, including:

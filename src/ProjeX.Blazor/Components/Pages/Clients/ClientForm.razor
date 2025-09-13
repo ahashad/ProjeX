@@ -18,7 +18,7 @@
                 <h4>@(IsEdit ? "Edit Client" : "Create New Client")</h4>
             </div>
             <div class="card-body">
-                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+                <EditForm Model="@model" FormName="ClientForm" OnValidSubmit="@HandleValidSubmit">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="alert alert-danger" />
 

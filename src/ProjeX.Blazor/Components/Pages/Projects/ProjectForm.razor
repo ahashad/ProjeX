@@ -21,7 +21,7 @@
                 <h4>@(IsEdit ? "Edit Project" : "Create New Project")</h4>
             </div>
             <div class="card-body">
-                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
+                <EditForm Model="@model" FormName="ProjectForm" OnValidSubmit="@HandleValidSubmit">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="alert alert-danger" />
 

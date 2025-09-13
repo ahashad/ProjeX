@@ -35,8 +35,8 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
     options.AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>());
 });
 
-// Add Identity
-builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
+// Add Identity - Modified for Blazor Server
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => 
 {
     options.SignIn.RequireConfirmedAccount = false;
     options.Password.RequireDigit = true;
@@ -45,12 +45,31 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
 })
-.AddRoles<IdentityRole>()
-.AddEntityFrameworkStores<ApplicationDbContext>();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+// Configure cookie authentication for Blazor Server
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = true;
+});
 
 // Add Blazor services
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add MVC for controllers with antiforgery support
+builder.Services.AddControllersWithViews();
+
+// Add authentication services for Blazor
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, 
+    Microsoft.AspNetCore.Components.Server.ServerAuthenticationStateProvider>();
 
 // Add Syncfusion Blazor service
 builder.Services.AddSyncfusionBlazor();
@@ -128,17 +147,19 @@ else
 }
 
 app.UseStaticFiles();
-app.UseAntiforgery();
 
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Map Identity pages
-app.MapRazorPages();
+// Map controllers
+app.MapControllers();
+
+// Remove MapRazorPages() since we're using custom Blazor Identity pages
 
 app.Run();
 

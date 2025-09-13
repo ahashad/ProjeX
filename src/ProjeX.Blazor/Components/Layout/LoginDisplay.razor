@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using LastMinute.Consultancy.Domain.Entities
+@rendermode InteractiveServer
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject SignInManager<ApplicationUser> SignInManager
@@ -17,9 +18,12 @@
                     <li><a class="dropdown-item" href="/Account/Manage">Manage Account</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
-                        <a class="dropdown-item" href="/Account/Logout">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                        </a>
+                        <form method="post" action="/api/account/logout" style="display: inline;">
+                            <AntiforgeryToken />
+                            <button type="submit" class="dropdown-item" style="border: none; background: none; cursor: pointer;">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </li>

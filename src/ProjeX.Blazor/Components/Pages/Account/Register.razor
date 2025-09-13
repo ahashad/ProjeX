@@ -5,26 +5,28 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
+@rendermode InteractiveServer
 
 <PageTitle>Register - ProjeX</PageTitle>
 
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
         <div class="card">
-            <div class="card-header text-center">
-                <h3>ProjeX</h3>
-                <p class="text-muted">Create your account</p>
-            </div>
-            <div class="card-body">
-                <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger">
-                            @errorMessage
-                        </div>
-                    }
+      <div class="card-header text-center">
+       <h3>ProjeX</h3>
+        <p class="text-muted">Create your account</p>
+   </div>
+    <div class="card-body">
+     <EditForm Model="@model" FormName="RegisterForm" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+    <DataAnnotationsValidator />
+              <ValidationSummary />
+ 
+           @if (!string.IsNullOrEmpty(errorMessage))
+        {
+       <div class="alert alert-danger">
+ @errorMessage
+  </div>
+           }
 
                     <div class="row">
                         <div class="col-md-6">
@@ -86,61 +88,74 @@
     private string errorMessage = string.Empty;
     private bool isSubmitting = false;
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize the model with empty values
+        model = new RegisterModel();
+ }
+
     private async Task HandleValidSubmit()
     {
         isSubmitting = true;
         errorMessage = string.Empty;
+        StateHasChanged();
 
         try
-        {
-            var user = new ApplicationUser
+    {
+     var user = new ApplicationUser
             {
-                UserName = model.Email,
-                Email = model.Email
-            };
+             UserName = model.Email,
+      Email = model.Email
+ };
 
-            var result = await UserManager.CreateAsync(user, model.Password);
+  var result = await UserManager.CreateAsync(user, model.Password);
 
-            if (result.Succeeded)
+  if (result.Succeeded)
             {
-                await SignInManager.SignInAsync(user, isPersistent: false);
-                NavigationManager.NavigateTo("/");
-            }
-            else
+  await SignInManager.SignInAsync(user, isPersistent: false);
+    NavigationManager.NavigateTo("/", forceLoad: true);
+       }
+  else
             {
-                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
-            }
-        }
+  errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+         }
+ }
         catch (Exception ex)
-        {
+     {
             errorMessage = "An error occurred during registration.";
-            Console.WriteLine($"Registration error: {ex.Message}");
+    Console.WriteLine($"Registration error: {ex.Message}");
         }
-        finally
+  finally
         {
             isSubmitting = false;
+            StateHasChanged();
         }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        errorMessage = "Please fix the validation errors below.";
     }
 
     public class RegisterModel
     {
         [Required(ErrorMessage = "First name is required")]
         [StringLength(50, ErrorMessage = "First name cannot exceed 50 characters")]
-        public string FirstName { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Last name is required")]
-        [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters")]
+      [Required(ErrorMessage = "Last name is required")]
+  [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters")]
         public string LastName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress(ErrorMessage = "Please enter a valid email address")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Password is required")]
+  [Required(ErrorMessage = "Password is required")]
         [StringLength(100, ErrorMessage = "Password must be at least {2} characters long.", MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Please confirm your password")]
+  [Required(ErrorMessage = "Please confirm your password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }

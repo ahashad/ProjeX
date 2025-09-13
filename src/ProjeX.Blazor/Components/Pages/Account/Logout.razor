@@ -1,16 +1,22 @@
 @page "/Account/Logout"
-@using Microsoft.AspNetCore.Identity
-@using LastMinute.Consultancy.Domain.Entities
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Logout - ProjeX</PageTitle>
 
+<div class="text-center">
+    <p>Signing you out...</p>
+    <form id="logoutForm" method="post" action="/api/account/logout">
+      <AntiforgeryToken />
+    </form>
+</div>
+
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await SignInManager.SignOutAsync();
-        NavigationManager.NavigateTo("/");
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('logoutForm').submit()");
+        }
     }
 }
 

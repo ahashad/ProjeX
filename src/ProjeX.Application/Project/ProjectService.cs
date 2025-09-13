@@ -119,7 +119,7 @@ namespace ProjeX.Application.Project
             };
         }
 
-        public async Task<ProjectDto> CreateAsync(CreateProjectCommand command)
+        public async Task<ProjectDto> CreateAsync(CreateProjectCommand command, string userId)
         {
             var client = await _context.Clients
                 .FirstOrDefaultAsync(c => c.Id == command.ClientId && !c.IsDeleted);
@@ -132,15 +132,15 @@ namespace ProjeX.Application.Project
                 Id = Guid.NewGuid(),
                 ProjectName = command.ProjectName,
                 ClientId = command.ClientId,
-                StartDate = DateTime.MinValue,
-                EndDate = DateTime.MinValue,
+                StartDate = command.StartDate,
+                EndDate = command.EndDate,
                 Budget = command.Budget,
                 ProjectPrice = command.ProjectPrice,
                 Status = command.Status,
                 Notes = command.Notes,
-                CreatedBy = "current-user",
+                CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
-                ModifiedBy = "current-user",
+                ModifiedBy = userId,
                 ModifiedAt = DateTime.UtcNow
             };
 
@@ -203,7 +203,7 @@ namespace ProjeX.Application.Project
             };
         }
 
-        public async Task UpdateAsync(UpdateProjectCommand command)
+        public async Task UpdateAsync(UpdateProjectCommand command, string userId)
         {
             var entity = await _context.Projects
                 .FirstOrDefaultAsync(p => p.Id == command.Id && !p.IsDeleted);
@@ -238,7 +238,7 @@ namespace ProjeX.Application.Project
 
             entity.Status = command.Status;
             entity.Notes = command.Notes;
-            entity.ModifiedBy = "current-user";
+            entity.ModifiedBy = userId;
             entity.ModifiedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -256,7 +256,7 @@ namespace ProjeX.Application.Project
             await _context.SaveChangesAsync();
         }
 
-        public async Task<ProjectDto> ApproveAsync(ApproveProjectCommand command)
+        public async Task<ProjectDto> ApproveAsync(ApproveProjectCommand command, string userId)
         {
             var project = await _context.Projects
                 .Include(p => p.Client)
@@ -307,7 +307,7 @@ namespace ProjeX.Application.Project
                 : $"{project.Notes}\n\n{approvalNote}";
 
             project.ModifiedAt = DateTime.UtcNow;
-            project.ModifiedBy = "current-user";
+            project.ModifiedBy = userId;
 
             await _context.SaveChangesAsync();
 

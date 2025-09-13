@@ -28,7 +28,7 @@ namespace ProjeX.Application.Employee
             return employee != null ? _mapper.Map<EmployeeDto>(employee) : null;
         }
 
-        public async Task<EmployeeDto> CreateAsync(CreateEmployeeCommand command)
+        public async Task<EmployeeDto> CreateAsync(CreateEmployeeCommand command, string userId)
         {
             var entity = new Domain.Entities.Employee
             {
@@ -42,7 +42,11 @@ namespace ProjeX.Application.Employee
                 Salary = command.Salary,
                 MonthlyIncentive = command.MonthlyIncentive,
                 CommissionPercent = command.CommissionPercent,
-                IsActive = command.IsActive
+                IsActive = command.IsActive,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow,
+                ModifiedBy = userId,
+                ModifiedAt = DateTime.UtcNow
             };
 
             _context.Employees.Add(entity);
@@ -51,7 +55,7 @@ namespace ProjeX.Application.Employee
             return _mapper.Map<EmployeeDto>(entity);
         }
 
-        public async Task UpdateAsync(UpdateEmployeeCommand command)
+        public async Task UpdateAsync(UpdateEmployeeCommand command, string userId)
         {
             var entity = await _context.Employees.FindAsync(command.Id);
             if (entity == null)
@@ -67,6 +71,8 @@ namespace ProjeX.Application.Employee
             entity.MonthlyIncentive = command.MonthlyIncentive;
             entity.CommissionPercent = command.CommissionPercent;
             entity.IsActive = command.IsActive;
+            entity.ModifiedBy = userId;
+            entity.ModifiedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }

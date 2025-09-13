@@ -8,8 +8,8 @@ namespace ProjeX.Application.Budget
         Task<IEnumerable<BudgetDto>> GetByProjectIdAsync(Guid projectId);
         Task<IEnumerable<BudgetDto>> GetByPathIdAsync(Guid pathId);
         Task<BudgetDto?> GetByIdAsync(Guid id);
-        Task<BudgetDto> CreateAsync(CreateBudgetRequest request);
-        Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request);
+        Task<BudgetDto> CreateAsync(CreateBudgetRequest request, string userId);
+        Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request, string userId);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> ApproveBudgetAsync(Guid id, Guid approvedById);
         Task<decimal> GetTotalBudgetByProjectAsync(Guid projectId);

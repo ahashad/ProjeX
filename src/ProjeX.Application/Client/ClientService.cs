@@ -31,7 +31,7 @@ namespace ProjeX.Application.Client
             return client != null ? _mapper.Map<ClientDto>(client) : null;
         }
 
-        public async Task<ClientDto> CreateAsync(CreateClientCommand command)
+        public async Task<ClientDto> CreateAsync(CreateClientCommand command, string userId)
         {
             var entity = new Domain.Entities.Client
             {
@@ -41,7 +41,11 @@ namespace ProjeX.Application.Client
                 Email = command.Email,
                 Phone = command.Phone,
                 Address = command.Address,
-                Status = command.Status
+                Status = command.Status,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow,
+                ModifiedBy = userId,
+                ModifiedAt = DateTime.UtcNow
             };
 
             _context.Clients.Add(entity);
@@ -50,7 +54,7 @@ namespace ProjeX.Application.Client
             return _mapper.Map<ClientDto>(entity);
         }
 
-        public async Task UpdateAsync(UpdateClientCommand command)
+        public async Task UpdateAsync(UpdateClientCommand command, string userId)
         {
             var entity = await _context.Clients.FindAsync(command.Id);
             if (entity == null)
@@ -64,6 +68,8 @@ namespace ProjeX.Application.Client
             entity.Phone = command.Phone;
             entity.Address = command.Address;
             entity.Status = command.Status;
+            entity.ModifiedBy = userId;
+            entity.ModifiedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }

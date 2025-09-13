@@ -62,7 +62,7 @@ namespace ProjeX.Application.Budget
             return budget != null ? _mapper.Map<BudgetDto>(budget) : null;
         }
 
-        public async Task<BudgetDto> CreateAsync(CreateBudgetRequest request)
+        public async Task<BudgetDto> CreateAsync(CreateBudgetRequest request, string userId)
         {
             // Validate project exists
             var project = await _context.Projects.FindAsync(request.ProjectId);
@@ -82,6 +82,10 @@ namespace ProjeX.Application.Budget
                 throw new InvalidOperationException("Budget period must be within project dates");
 
             var budget = _mapper.Map<Domain.Entities.Budget>(request);
+            budget.CreatedBy = userId;
+            budget.CreatedAt = DateTime.UtcNow;
+            budget.ModifiedBy = userId;
+            budget.ModifiedAt = DateTime.UtcNow;
             
             _context.Budgets.Add(budget);
             await _context.SaveChangesAsync();
@@ -89,7 +93,7 @@ namespace ProjeX.Application.Budget
             return await GetByIdAsync(budget.Id) ?? throw new InvalidOperationException("Failed to retrieve created budget");
         }
 
-        public async Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request)
+        public async Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request, string userId)
         {
             var budget = await _context.Budgets.Include(b => b.Project).FirstOrDefaultAsync(b => b.Id == request.Id);
             if (budget == null)
@@ -108,6 +112,8 @@ namespace ProjeX.Application.Budget
                 throw new InvalidOperationException("Budget period must be within project dates");
 
             _mapper.Map(request, budget);
+            budget.ModifiedBy = userId;
+            budget.ModifiedAt = DateTime.UtcNow;
             
             await _context.SaveChangesAsync();
 

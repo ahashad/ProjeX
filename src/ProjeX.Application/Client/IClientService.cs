@@ -9,8 +9,8 @@ namespace ProjeX.Application.Client
     {
         Task<List<ClientDto>> GetAllAsync();
         Task<ClientDto?> GetByIdAsync(Guid id);
-        Task<ClientDto> CreateAsync(CreateClientCommand command);
-        Task UpdateAsync(UpdateClientCommand command);
+        Task<ClientDto> CreateAsync(CreateClientCommand command, string userId);
+        Task UpdateAsync(UpdateClientCommand command, string userId);
         Task DeleteAsync(Guid id);
     }
 }

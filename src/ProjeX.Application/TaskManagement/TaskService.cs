@@ -17,7 +17,7 @@ namespace ProjeX.Application.TaskManagement
             _mapper = mapper;
         }
 
-        public async Task<TaskDto> CreateAsync(CreateTaskRequest request)
+        public async Task<TaskDto> CreateAsync(CreateTaskRequest request, string userId)
         {
             // Validate deliverable exists
             var deliverable = await _context.Deliverables.FindAsync(request.DeliverableId);
@@ -38,6 +38,10 @@ namespace ProjeX.Application.TaskManagement
             var task = _mapper.Map<Domain.Entities.Task>(request);
             task.Id = Guid.NewGuid();
             task.Status = TaskStatus.NotStarted;
+            task.CreatedBy = userId;
+            task.CreatedAt = DateTime.UtcNow;
+            task.ModifiedBy = userId;
+            task.ModifiedAt = DateTime.UtcNow;
 
             _context.Tasks.Add(task);
             await _context.SaveChangesAsync();
@@ -59,7 +63,7 @@ namespace ProjeX.Application.TaskManagement
             return await GetByIdAsync(task.Id) ?? throw new InvalidOperationException("Failed to retrieve created task");
         }
 
-        public async Task<TaskDto> UpdateAsync(UpdateTaskRequest request)
+        public async Task<TaskDto> UpdateAsync(UpdateTaskRequest request, string userId)
         {
             var task = await _context.Tasks.FindAsync(request.Id);
             if (task == null)
@@ -71,6 +75,8 @@ namespace ProjeX.Application.TaskManagement
 
             var oldStatus = task.Status;
             _mapper.Map(request, task);
+            task.ModifiedBy = userId;
+            task.ModifiedAt = DateTime.UtcNow;
 
             // Update progress based on status
             if (request.Status == TaskStatus.Completed && task.ProgressPercentage < 100)

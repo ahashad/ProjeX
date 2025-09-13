@@ -9,9 +9,9 @@ namespace ProjeX.Application.Project
     {
         Task<List<ProjectDto>> GetAllAsync();
         Task<ProjectDto?> GetByIdAsync(Guid id);
-        Task<ProjectDto> CreateAsync(CreateProjectCommand command);
-        Task UpdateAsync(UpdateProjectCommand command);
+        Task<ProjectDto> CreateAsync(CreateProjectCommand command, string userId);
+        Task UpdateAsync(UpdateProjectCommand command, string userId);
         Task DeleteAsync(Guid id);
-        Task<ProjectDto> ApproveAsync(ApproveProjectCommand command);
+        Task<ProjectDto> ApproveAsync(ApproveProjectCommand command, string userId);
     }
 }

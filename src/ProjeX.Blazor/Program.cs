@@ -20,6 +20,7 @@ using ProjeX.Application.Payment;
 using ProjeX.Application.Reports;
 using ProjeX.Application.Path;
 using ProjeX.Application.Budget;
+using ProjeX.Application.Identity;
 using ProjeX.Infrastructure.Services;
 using ProjeX.Infrastructure.Interceptors;
 using Syncfusion.Blazor;
@@ -109,6 +110,8 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPathService, PathService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Add authorization policies
 builder.Services.AddAuthorization(options =>

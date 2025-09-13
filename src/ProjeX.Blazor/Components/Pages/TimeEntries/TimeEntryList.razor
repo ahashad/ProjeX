@@ -1,10 +1,12 @@
 @page "/time-entries"
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.TimeEntry
+@using ProjeX.Application.Common.Interfaces
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Popups
 @attribute [Authorize]
 @inject ITimeEntryService TimeEntryService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>Time Entries - ProjeX</PageTitle>
@@ -149,7 +151,8 @@ else
         {
             try
             {
-                await TimeEntryService.DeleteAsync(selectedTimeEntry.Id, "current-user"); // TODO: Get actual user ID
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                await TimeEntryService.DeleteAsync(selectedTimeEntry.Id, currentUser.Id);
                 await LoadTimeEntries();
                 showDeleteDialog = false;
                 selectedTimeEntry = null;

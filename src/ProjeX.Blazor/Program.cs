@@ -22,6 +22,8 @@ using ProjeX.Application.Path;
 using ProjeX.Application.Budget;
 using ProjeX.Infrastructure.Services;
 using ProjeX.Infrastructure.Interceptors;
+using ProjeX.Application.Common.Interfaces;
+using ProjeX.Infrastructure.Identity;
 using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +31,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services needed for interceptors
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditInterceptor>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Add Entity Framework with audit interceptor
 builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>

@@ -6,9 +6,11 @@
 @using ProjeX.Domain.Enums
 @using System.ComponentModel.DataAnnotations
 @using Syncfusion.Blazor.Calendars
+@using ProjeX.Application.Common.Interfaces
 @attribute [Authorize]
 @inject ITimeEntryService TimeEntryService
 @inject NavigationManager Navigation
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>@(IsEdit ? "Edit Time Entry" : "Log Time") - ProjeX</PageTitle>
 
@@ -152,6 +154,7 @@
         isSubmitting = true;
         try
         {
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
             if (IsEdit)
             {
                 var updateCommand = new UpdateTimeEntryCommand
@@ -164,7 +167,7 @@
                     IsBillable = model.IsBillable,
                     BillableRate = model.BillableRate
                 };
-                await TimeEntryService.UpdateAsync(updateCommand, "current-user"); // TODO: Get actual user ID
+                await TimeEntryService.UpdateAsync(updateCommand, currentUser.Id);
             }
             else
             {
@@ -177,7 +180,7 @@
                     IsBillable = model.IsBillable,
                     BillableRate = model.BillableRate
                 };
-                await TimeEntryService.CreateAsync(createCommand, "current-user"); // TODO: Get actual user ID
+                await TimeEntryService.CreateAsync(createCommand, currentUser.Id);
             }
 
             Navigation.NavigateTo("/time-entries");

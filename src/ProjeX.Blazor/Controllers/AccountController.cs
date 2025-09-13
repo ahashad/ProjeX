@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using LastMinute.Consultancy.Domain.Entities;
+using ProjeX.Domain.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace ProjeX.Blazor.Controllers

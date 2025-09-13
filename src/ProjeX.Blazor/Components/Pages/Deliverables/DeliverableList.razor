@@ -1,6 +1,13 @@
 @page "/deliverables"
 @using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Deliverable
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Notifications
 @attribute [Authorize]
+@inject IDeliverableService DeliverableService
+@inject NavigationManager Navigation
 
 <PageTitle>Deliverables - ProjeX</PageTitle>
 
@@ -13,10 +20,152 @@
     </AuthorizeView>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <p class="text-muted">Deliverable management functionality will be implemented here.</p>
-        <p>This page will show project deliverables with status tracking and management capabilities.</p>
+@if (deliverables == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
-</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@deliverables" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(DeliverableDto.Title) HeaderText="Title" Width="200"></GridColumn>
+                    <GridColumn Field=@nameof(DeliverableDto.Description) HeaderText="Description" Width="300"></GridColumn>
+                    <GridColumn Field=@nameof(DeliverableDto.ProjectName) HeaderText="Project" Width="180"></GridColumn>
+                    <GridColumn Field=@nameof(DeliverableDto.DueDate) HeaderText="Due Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(DeliverableDto.Status) HeaderText="Status" Width="120">
+                        <Template>
+                            @{
+                                var deliverable = (context as DeliverableDto);
+                                var badgeClass = GetStatusBadgeClass(deliverable?.Status ?? DeliverableStatus.NotStarted);
+                            }
+                            <span class="badge @badgeClass">@deliverable?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var deliverable = (context as DeliverableDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/deliverables/details/@deliverable?.Id" class="btn btn-outline-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <AuthorizeView Policy="ManagerOrAdmin">
+                                    <a href="/deliverables/edit/@deliverable?.Id" class="btn btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(deliverable!)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </AuthorizeView>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete the deliverable "@selectedDeliverable?.Title"?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+<SfToast @ref="toastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    private List<DeliverableDto>? deliverables;
+    private bool showDeleteDialog = false;
+    private DeliverableDto? selectedDeliverable;
+    private SfToast? toastObj;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDeliverables();
+    }
+
+    private async Task LoadDeliverables()
+    {
+        try
+        {
+            deliverables = await DeliverableService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading deliverables: {ex.Message}";
+            await ShowErrorAsync();
+        }
+    }
+
+    private void ShowDeleteConfirmation(DeliverableDto deliverable)
+    {
+        selectedDeliverable = deliverable;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedDeliverable = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedDeliverable != null)
+        {
+            try
+            {
+                await DeliverableService.DeleteAsync(selectedDeliverable.Id);
+                await LoadDeliverables();
+                showDeleteDialog = false;
+                selectedDeliverable = null;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting deliverable: {ex.Message}";
+                await ShowErrorAsync();
+            }
+        }
+    }
+
+    private async Task ShowErrorAsync()
+    {
+        if (toastObj != null && !string.IsNullOrEmpty(errorMessage))
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = errorMessage });
+        }
+    }
+
+    private string GetStatusBadgeClass(DeliverableStatus status)
+    {
+        return status switch
+        {
+            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.InProgress => "bg-primary",
+            DeliverableStatus.Completed => "bg-success",
+            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
 

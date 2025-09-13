@@ -1,0 +1,224 @@
+@page "/deliverables/create"
+@page "/deliverables/edit/{Id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Deliverable
+@using ProjeX.Application.Deliverable.Commands
+@using ProjeX.Application.Project
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.Notifications
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IDeliverableService DeliverableService
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Edit" : "Create") Deliverable - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@(IsEdit ? "Edit" : "Create") Deliverable</h1>
+    <a href="/deliverables" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="@command" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger mb-3" />
+
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <InputText id="title" class="form-control" @bind-Value="command.Title" />
+                        <ValidationMessage For="@(() => command.Title)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <InputTextArea id="description" class="form-control" rows="4" @bind-Value="command.Description" />
+                        <ValidationMessage For="@(() => command.Description)" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="project" class="form-label">Project <span class="text-danger">*</span></label>
+                                <SfDropDownList TValue="Guid" TItem="ProjectDto" 
+                                               DataSource="@projects" 
+                                               @bind-Value="command.ProjectId"
+                                               Placeholder="Select a project"
+                                               CssClass="form-control">
+                                    <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                                <ValidationMessage For="@(() => command.ProjectId)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <SfDropDownList TValue="DeliverableStatus" TItem="StatusOption" 
+                                               DataSource="@statusOptions" 
+                                               @bind-Value="command.Status"
+                                               CssClass="form-control">
+                                    <DropDownListFieldSettings Value="Value" Text="Text"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                                <ValidationMessage For="@(() => command.Status)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dueDate" class="form-label">Due Date <span class="text-danger">*</span></label>
+                        <SfDatePicker TValue="DateTime" @bind-Value="command.DueDate" CssClass="form-control"></SfDatePicker>
+                        <ValidationMessage For="@(() => command.DueDate)" />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="fas fa-save me-2"></i>@(IsEdit ? "Update" : "Create")
+                        </button>
+                        <a href="/deliverables" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<SfToast @ref="toastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEdit => Id.HasValue;
+    private CreateDeliverableCommand command = new();
+    private UpdateDeliverableCommand updateCommand = new();
+    private List<ProjectDto> projects = new();
+    private List<StatusOption> statusOptions = new();
+    private bool isSubmitting = false;
+    private SfToast? toastObj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+        LoadStatusOptions();
+
+        if (IsEdit && Id.HasValue)
+        {
+            await LoadDeliverable(Id.Value);
+        }
+        else
+        {
+            command.DueDate = DateTime.Today.AddDays(30); // Default to 30 days from now
+            command.Status = DeliverableStatus.NotStarted;
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            projects = await ProjectService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error loading projects: {ex.Message}");
+        }
+    }
+
+    private void LoadStatusOptions()
+    {
+        statusOptions = Enum.GetValues<DeliverableStatus>()
+            .Select(s => new StatusOption { Value = s, Text = s.ToString() })
+            .ToList();
+    }
+
+    private async Task LoadDeliverable(Guid id)
+    {
+        try
+        {
+            var deliverable = await DeliverableService.GetByIdAsync(id);
+            if (deliverable != null)
+            {
+                updateCommand = new UpdateDeliverableCommand
+                {
+                    Id = deliverable.Id,
+                    Title = deliverable.Title,
+                    Description = deliverable.Description,
+                    ProjectId = deliverable.ProjectId,
+                    DueDate = deliverable.DueDate,
+                    Status = deliverable.Status
+                };
+
+                // Copy to command for form binding
+                command.Title = deliverable.Title;
+                command.Description = deliverable.Description;
+                command.ProjectId = deliverable.ProjectId;
+                command.DueDate = deliverable.DueDate;
+                command.Status = deliverable.Status;
+            }
+            else
+            {
+                Navigation.NavigateTo("/deliverables");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error loading deliverable: {ex.Message}");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsEdit)
+            {
+                updateCommand.Title = command.Title;
+                updateCommand.Description = command.Description;
+                updateCommand.ProjectId = command.ProjectId;
+                updateCommand.DueDate = command.DueDate;
+                updateCommand.Status = command.Status;
+
+                await DeliverableService.UpdateAsync(updateCommand);
+            }
+            else
+            {
+                await DeliverableService.CreateAsync(command);
+            }
+
+            Navigation.NavigateTo("/deliverables");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error {(IsEdit ? "updating" : "creating")} deliverable: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task ShowErrorAsync(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = message });
+        }
+    }
+
+    private class StatusOption
+    {
+        public DeliverableStatus Value { get; set; }
+        public string Text { get; set; } = string.Empty;
+    }
+}
+

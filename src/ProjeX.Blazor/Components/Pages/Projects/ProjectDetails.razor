@@ -1,6 +1,6 @@
 @page "/projects/details/{id:guid}"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Project
+@using ProjeX.Application.Project
 @attribute [Authorize]
 @inject IProjectService ProjectService
 @inject NavigationManager Navigation
@@ -205,7 +205,7 @@ else
         }
     }
 
-    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.ProjectStatus status)
+    private string GetStatusBadgeClass(ProjeX.Domain.Enums.ProjectStatus status)
     {
         return status.ToString() switch
         {

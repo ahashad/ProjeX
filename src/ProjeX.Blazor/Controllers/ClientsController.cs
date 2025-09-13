@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LastMinute.Consultancy.Application.Client;
-using LastMinute.Consultancy.Application.Client.Commands;
+using ProjeX.Application.Client;
+using ProjeX.Application.Client.Commands;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

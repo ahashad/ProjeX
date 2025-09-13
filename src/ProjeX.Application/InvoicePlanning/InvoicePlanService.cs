@@ -16,7 +16,7 @@ namespace ProjeX.Application.InvoicePlanning
             _mapper = mapper;
         }
 
-        public async Task<InvoicePlanDto> CreateAsync(CreateInvoicePlanRequest request)
+        public async Task<InvoicePlanDto> CreateAsync(CreateInvoicePlanRequest request, string userId)
         {
             // Validate project exists
             var project = await _context.Projects.FindAsync(request.ProjectId);
@@ -29,6 +29,10 @@ namespace ProjeX.Application.InvoicePlanning
 
             var invoicePlan = _mapper.Map<Domain.Entities.InvoicePlan>(request);
             invoicePlan.Id = Guid.NewGuid();
+            invoicePlan.CreatedBy = userId;
+            invoicePlan.CreatedAt = DateTime.UtcNow;
+            invoicePlan.ModifiedBy = userId;
+            invoicePlan.ModifiedAt = DateTime.UtcNow;
 
             // Calculate invoice details based on frequency
             CalculateInvoiceSchedule(invoicePlan);
@@ -42,7 +46,7 @@ namespace ProjeX.Application.InvoicePlanning
             return await GetByIdAsync(invoicePlan.Id) ?? throw new InvalidOperationException("Failed to retrieve created invoice plan");
         }
 
-        public async Task<InvoicePlanDto> UpdateAsync(UpdateInvoicePlanRequest request)
+        public async Task<InvoicePlanDto> UpdateAsync(UpdateInvoicePlanRequest request, string userId)
         {
             var invoicePlan = await _context.InvoicePlans
                 .Include(ip => ip.InvoiceSchedules)
@@ -57,6 +61,8 @@ namespace ProjeX.Application.InvoicePlanning
                 throw new InvalidOperationException("Cannot modify invoice plan with generated invoices");
 
             _mapper.Map(request, invoicePlan);
+            invoicePlan.ModifiedBy = userId;
+            invoicePlan.ModifiedAt = DateTime.UtcNow;
             
             // Recalculate schedule if frequency or dates changed
             CalculateInvoiceSchedule(invoicePlan);

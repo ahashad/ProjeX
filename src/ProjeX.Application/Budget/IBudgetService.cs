@@ -11,7 +11,7 @@ namespace ProjeX.Application.Budget
         Task<BudgetDto> CreateAsync(CreateBudgetRequest request, string userId);
         Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request, string userId);
         Task<bool> DeleteAsync(Guid id);
-        Task<bool> ApproveBudgetAsync(Guid id, Guid approvedById);
+        Task<bool> ApproveBudgetAsync(Guid id, string approvedById);
         Task<decimal> GetTotalBudgetByProjectAsync(Guid projectId);
         Task<decimal> GetTotalBudgetByCategoryAsync(Guid projectId, BudgetCategory category);
         Task<IEnumerable<BudgetDto>> GetBudgetsByDateRangeAsync(DateTime startDate, DateTime endDate);

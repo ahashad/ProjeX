@@ -13,6 +13,10 @@
 @inject IOverheadService OverheadService
 @inject IProjectService ProjectService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@using Microsoft.AspNetCore.Components.Authorization
+@using ProjeX.Domain.Entities
 
 <PageTitle>@(IsEdit ? "Edit" : "Create") Overhead - ProjeX</PageTitle>
 
@@ -114,9 +118,19 @@
     private List<CategoryOption> categoryOptions = new();
     private bool isSubmitting = false;
     private SfToast? toastObj;
+    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            currentUserId = appUser?.Id;
+        }
+
         await LoadProjects();
         LoadCategoryOptions();
 
@@ -198,11 +212,11 @@
                 updateCommand.Category = command.Category;
                 updateCommand.ProjectId = command.ProjectId;
 
-                await OverheadService.UpdateAsync(updateCommand);
+                await OverheadService.UpdateAsync(updateCommand, currentUserId);
             }
             else
             {
-                await OverheadService.CreateAsync(command);
+                await OverheadService.CreateAsync(command, currentUserId);
             }
 
             Navigation.NavigateTo("/overheads");

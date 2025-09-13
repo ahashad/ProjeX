@@ -9,8 +9,8 @@ namespace ProjeX.Application.Deliverable
     {
         Task<List<DeliverableDto>> GetAllAsync();
         Task<DeliverableDto?> GetByIdAsync(Guid id);
-        Task<DeliverableDto> CreateAsync(CreateDeliverableCommand command);
-        Task UpdateAsync(UpdateDeliverableCommand command);
+        Task<DeliverableDto> CreateAsync(CreateDeliverableCommand command, string userId);
+        Task UpdateAsync(UpdateDeliverableCommand command, string userId);
         Task DeleteAsync(Guid id);
     }
 }

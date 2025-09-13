@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ProjeX.Domain.Enums;
 using ProjeX.Infrastructure.Data;
+using ProjeX.Application.ActualAssignment;
 
 namespace ProjeX.Application.ResourceUtilization
 {
@@ -38,7 +39,7 @@ namespace ProjeX.Application.ResourceUtilization
                 ProjectCount = projectCount,
                 IsOverAllocated = totalAllocation > 100,
                 IsUnderUtilized = totalAllocation < 80,
-                Assignments = _mapper.Map<List<AssignmentDto>>(assignments)
+                Assignments = _mapper.Map<List<ActualAssignmentDto>>(assignments)
             };
         }
 

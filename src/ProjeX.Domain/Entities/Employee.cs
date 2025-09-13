@@ -23,6 +23,9 @@ namespace ProjeX.Domain.Entities
         public decimal CommissionPercent { get; set; }
         public bool IsActive { get; set; } = true;
         public EmployeeStatus Status => IsActive ? EmployeeStatus.Active : EmployeeStatus.Inactive;
+
+        // Navigation properties
+        public virtual ICollection<ActualAssignment> ActualAssignments { get; set; } = new List<ActualAssignment>();
     }
 }
 

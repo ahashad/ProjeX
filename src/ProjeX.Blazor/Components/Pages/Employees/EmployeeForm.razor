@@ -6,6 +6,7 @@
 @using ProjeX.Application.RolesCatalog
 @using ProjeX.Domain.Entities
 @using System.ComponentModel.DataAnnotations
+@using System.Threading.Tasks
 @using Syncfusion.Blazor.Calendars
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IEmployeeService EmployeeService
@@ -193,7 +194,7 @@
 
     private bool IsEdit => Id.HasValue;
 
-    protected override async Task OnInitializedAsync()
+    protected override async System.Threading.Tasks.Task OnInitializedAsync()
     {
         await LoadRoles();
         if (IsEdit && Id.HasValue)
@@ -206,7 +207,7 @@
         }
     }
 
-    private async Task LoadRoles()
+    private async System.Threading.Tasks.Task LoadRoles()
     {
         try
         {
@@ -218,7 +219,7 @@
         }
     }
 
-    private async Task LoadEmployee(Guid id)
+    private async System.Threading.Tasks.Task LoadEmployee(Guid id)
     {
         try
         {
@@ -277,7 +278,7 @@
         }
     }
 
-    private async Task HandleValidSubmit()
+    private async System.Threading.Tasks.Task HandleValidSubmit()
     {
         isSubmitting = true;
         try

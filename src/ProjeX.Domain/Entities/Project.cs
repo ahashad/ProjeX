@@ -27,6 +27,9 @@ namespace ProjeX.Domain.Entities
         // Existing fields
         public decimal ExpectedWorkingPeriodMonths { get; set; }
         public decimal ProjectPrice { get; set; }
+   
+        // Additional properties needed by services
+        public DateTime? ActualEndDate { get; set; }
 
         // Navigation properties
         public virtual Client Client { get; set; } = null!;

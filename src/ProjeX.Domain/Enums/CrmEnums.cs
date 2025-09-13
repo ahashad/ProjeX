@@ -96,5 +96,14 @@ namespace ProjeX.Domain.Enums
         Presentation = 7,
         Demo = 8
     }
+
+    public enum ActivityStatus
+    {
+        NotStarted = 1,
+        InProgress = 2,
+        Completed = 3,
+        Cancelled = 4,
+        Deferred = 5
+    }
 }
 

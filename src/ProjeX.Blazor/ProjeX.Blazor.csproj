@@ -9,12 +9,13 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageReference Include="Syncfusion.Blazor.Calendars" Version="29.1.48" />
-    <PackageReference Include="Syncfusion.Blazor.Charts" Version="29.1.48" />
-    <PackageReference Include="Syncfusion.Blazor.Grid" Version="29.1.48" />
-    <PackageReference Include="Syncfusion.Blazor.Popups" Version="29.1.48" />
-    <PackageReference Include="Syncfusion.Blazor.Themes" Version="29.1.48" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8" />
+    <PackageReference Include="Syncfusion.Blazor.Calendars" Version="29.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Charts" Version="29.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Grid" Version="29.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Popups" Version="29.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="29.2.4" />
   </ItemGroup>
 
   <PropertyGroup>

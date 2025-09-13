@@ -20,6 +20,11 @@ namespace ProjeX.Domain.Entities
         public string Dependencies { get; set; } = string.Empty;
         public bool IsMilestone { get; set; }
 
+        // Additional properties needed by services
+        public int ProgressPercentage { get; set; }
+        public DateTime? ActualStartDate { get; set; }
+        public DateTime? ActualEndDate { get; set; }
+
         // Navigation properties
         public virtual Project Project { get; set; } = null!;
         public virtual Path? Path { get; set; }

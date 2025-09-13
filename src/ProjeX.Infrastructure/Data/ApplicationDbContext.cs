@@ -9,24 +9,40 @@ namespace ProjeX.Infrastructure.Data
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
+   : base(options)
         {
         }
 
         public DbSet<RolesCatalog> RolesCatalogs { get; set; }
-        public DbSet<Employee> Employees { get; set; }
+      public DbSet<Employee> Employees { get; set; }
         public DbSet<Client> Clients { get; set; }
         public DbSet<Project> Projects { get; set; }
-        public DbSet<PlannedTeamSlot> PlannedTeamSlots { get; set; }
+ public DbSet<PlannedTeamSlot> PlannedTeamSlots { get; set; }
         public DbSet<Domain.Entities.Overhead> Overheads { get; set; }
         public DbSet<Deliverable> Deliverables { get; set; }
         public DbSet<ActualAssignment> ActualAssignments { get; set; }
         public DbSet<UserProjectClaim> UserProjectClaims { get; set; }
-        public DbSet<TimeEntry> TimeEntries { get; set; }
+     public DbSet<TimeEntry> TimeEntries { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceLineItem> InvoiceLineItems { get; set; }
-        public DbSet<Payment> Payments { get; set; }
+ public DbSet<Payment> Payments { get; set; }
         public DbSet<ChangeRequest> ChangeRequests { get; set; }
+
+        // Additional DbSets that were missing
+        public DbSet<Domain.Entities.Task> Tasks { get; set; }
+        public DbSet<TaskDependency> TaskDependencies { get; set; }
+ public DbSet<Account> Accounts { get; set; }
+   public DbSet<Opportunity> Opportunities { get; set; }
+        public DbSet<OpportunityActivity> OpportunityActivities { get; set; }
+        public DbSet<Tender> Tenders { get; set; }
+      public DbSet<TenderActivity> TenderActivities { get; set; }
+        public DbSet<Budget> Budgets { get; set; }
+        public DbSet<Vendor> Vendors { get; set; }
+        public DbSet<VendorInvoice> VendorInvoices { get; set; }
+      public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
+        public DbSet<InvoicePlan> InvoicePlans { get; set; }
+        public DbSet<InvoiceSchedule> InvoiceSchedules { get; set; }
+    public DbSet<Domain.Entities.Path> Paths { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -199,6 +215,36 @@ namespace ProjeX.Infrastructure.Data
             builder.Entity<ChangeRequest>().Property(cr => cr.ReviewComments).HasColumnType("TEXT");
             builder.Entity<ChangeRequest>().Property(cr => cr.ApprovalComments).HasColumnType("TEXT");
             builder.Entity<ChangeRequest>().HasOne(cr => cr.Project).WithMany().HasForeignKey(cr => cr.ProjectId).OnDelete(DeleteBehavior.Restrict);
+
+            // TODO: Configure TaskDependency entity relationships properly
+            // Configure TaskDependency entity
+            builder.Entity<TaskDependency>()
+                .HasKey(td => new { td.TaskId, td.DependentTaskId });
+
+            builder.Entity<TaskDependency>()
+                .HasOne(td => td.Task)
+                .WithMany()
+                .HasForeignKey(td => td.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TaskDependency>()
+                .HasOne(td => td.DependentTask)
+                .WithMany()
+                .HasForeignKey(td => td.DependentTaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure GoodsReceiptItem to fix cascade delete conflict
+            builder.Entity<GoodsReceiptItem>()
+                .HasOne(gri => gri.GoodsReceipt)
+                .WithMany()
+                .HasForeignKey(gri => gri.GoodsReceiptId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<GoodsReceiptItem>()
+                .HasOne(gri => gri.PurchaseOrderItem)
+                .WithMany()
+                .HasForeignKey(gri => gri.PurchaseOrderItemId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

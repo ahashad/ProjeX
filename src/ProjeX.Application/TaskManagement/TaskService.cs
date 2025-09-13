@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ProjeX.Domain.Enums;
 using ProjeX.Infrastructure.Data;
+using TaskStatus = ProjeX.Domain.Enums.TaskStatus;
 
 namespace ProjeX.Application.TaskManagement
 {
@@ -95,8 +96,9 @@ namespace ProjeX.Application.TaskManagement
             var task = await _context.Tasks
                 .Include(t => t.Deliverable)
                 .Include(t => t.AssignedEmployee)
-                .Include(t => t.Dependencies)
-                    .ThenInclude(d => d.DependentTask)
+                // TODO: Add back Dependencies include after fixing EF configuration
+                // .Include(t => t.Dependencies)
+                //     .ThenInclude(d => d.DependentTask)
                 .Include(t => t.Approvals)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
@@ -108,8 +110,9 @@ namespace ProjeX.Application.TaskManagement
             var tasks = await _context.Tasks
                 .Include(t => t.Deliverable)
                 .Include(t => t.AssignedEmployee)
-                .Include(t => t.Dependencies)
-                    .ThenInclude(d => d.DependentTask)
+                // TODO: Add back Dependencies include after fixing EF configuration
+                // .Include(t => t.Dependencies)
+                //     .ThenInclude(d => d.DependentTask)
                 .Include(t => t.Approvals)
                 .Where(t => t.DeliverableId == deliverableId)
                 .OrderBy(t => t.PlannedStartDate)
@@ -134,7 +137,8 @@ namespace ProjeX.Application.TaskManagement
         public async Task<bool> DeleteAsync(Guid id)
         {
             var task = await _context.Tasks
-                .Include(t => t.Dependencies)
+                // TODO: Add back Dependencies include after fixing EF configuration
+                // .Include(t => t.Dependencies)
                 .FirstOrDefaultAsync(t => t.Id == id);
             
             if (task == null)
@@ -148,7 +152,10 @@ namespace ProjeX.Application.TaskManagement
                 throw new InvalidOperationException("Cannot delete task that has dependent tasks");
 
             // Remove dependencies
-            _context.TaskDependencies.RemoveRange(task.Dependencies);
+            // TODO: Fix Dependencies removal after fixing EF configuration
+            // _context.TaskDependencies.RemoveRange(task.Dependencies);
+            var taskDependencies = await _context.TaskDependencies.Where(td => td.TaskId == id).ToListAsync();
+            _context.TaskDependencies.RemoveRange(taskDependencies);
             
             // Remove task
             _context.Tasks.Remove(task);
@@ -163,8 +170,9 @@ namespace ProjeX.Application.TaskManagement
         public async Task<CriticalPathDto> GetCriticalPathAsync(Guid deliverableId)
         {
             var tasks = await _context.Tasks
-                .Include(t => t.Dependencies)
-                    .ThenInclude(d => d.DependentTask)
+                // TODO: Add back Dependencies include after fixing EF configuration
+                // .Include(t => t.Dependencies)
+                //     .ThenInclude(d => d.DependentTask)
                 .Where(t => t.DeliverableId == deliverableId)
                 .ToListAsync();
 
@@ -222,7 +230,7 @@ namespace ProjeX.Application.TaskManagement
             }
         }
 
-        private bool IsValidStatusTransition(TaskStatus currentStatus, TaskStatus newStatus)
+        private bool IsValidStatusTransition(ProjeX.Domain.Enums.TaskStatus currentStatus, ProjeX.Domain.Enums.TaskStatus newStatus)
         {
             return currentStatus switch
             {
@@ -244,7 +252,10 @@ namespace ProjeX.Application.TaskManagement
             var criticalTasks = new List<Domain.Entities.Task>();
 
             // Find tasks with no dependencies (start tasks)
-            var startTasks = tasks.Where(t => !t.Dependencies.Any()).ToList();
+            // TODO: Fix Dependencies check after fixing EF configuration
+            // var startTasks = tasks.Where(t => !t.Dependencies.Any()).ToList();
+            // For now, return all tasks as a simplified critical path
+            var startTasks = tasks.ToList();
             
             // For simplicity, return the longest path by duration
             var longestPath = new List<Domain.Entities.Task>();

@@ -16,6 +16,9 @@ namespace ProjeX.Domain.Entities
         public decimal? BillableRate { get; set; }
         public string? ApprovedBy { get; set; }
         public DateTime? ApprovedAt { get; set; }
+
+        // Additional property for easier querying
+        public Guid ProjectId => ActualAssignment?.ProjectId ?? Guid.Empty;
     }
 }
 

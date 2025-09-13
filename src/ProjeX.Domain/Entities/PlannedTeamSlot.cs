@@ -20,7 +20,7 @@ namespace ProjeX.Domain.Entities
         public decimal PlannedMonthlyCost { get; set; }
         public decimal PlannedVendorCost { get; set; }
         public string Notes { get; set; } = string.Empty;
-        public PlannedTeamStatus Status { get; set; } = PlannedTeamStatus.Draft;
+        public PlannedTeamStatus Status { get; set; } = PlannedTeamStatus.Planned;
         public bool IsVendorSlot { get; set; }
         public string RequiredSkills { get; set; } = string.Empty;
         public int Priority { get; set; } = 1; // 1 = High, 2 = Medium, 3 = Low

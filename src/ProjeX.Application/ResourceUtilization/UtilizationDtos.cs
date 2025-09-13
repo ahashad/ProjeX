@@ -2,6 +2,11 @@ using ProjeX.Application.ActualAssignment;
 
 namespace ProjeX.Application.ResourceUtilization
 {
+    // Type alias for backward compatibility
+    public class AssignmentDto : ActualAssignmentDto
+    {
+    }
+
     public class UtilizationSummaryDto
     {
         public Guid EmployeeId { get; set; }
@@ -12,7 +17,7 @@ namespace ProjeX.Application.ResourceUtilization
         public int ProjectCount { get; set; }
         public bool IsOverAllocated { get; set; }
         public bool IsUnderUtilized { get; set; }
-        public List<AssignmentDto> Assignments { get; set; } = new();
+        public List<ActualAssignmentDto> Assignments { get; set; } = new();
     }
 
     public class ProjectUtilizationDto

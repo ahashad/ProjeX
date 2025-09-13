@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Identity
 @using ProjeX.Domain.Entities
 @using System.ComponentModel.DataAnnotations
+@using System.Threading.Tasks
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
@@ -12,21 +13,21 @@
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
         <div class="card">
-      <div class="card-header text-center">
-       <h3>ProjeX</h3>
+            <div class="card-header text-center">
+  <h3>ProjeX</h3>
         <p class="text-muted">Create your account</p>
-   </div>
-    <div class="card-body">
-     <EditForm Model="@model" FormName="RegisterForm" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
-    <DataAnnotationsValidator />
-              <ValidationSummary />
- 
-           @if (!string.IsNullOrEmpty(errorMessage))
-        {
-       <div class="alert alert-danger">
- @errorMessage
-  </div>
-           }
+      </div>
+      <div class="card-body">
+      <EditForm Model="@model" FormName="RegisterForm" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+       <DataAnnotationsValidator />
+         <ValidationSummary />
+
+   @if (!string.IsNullOrEmpty(errorMessage))
+   {
+           <div class="alert alert-danger">
+           @errorMessage
+</div>
+}
 
                     <div class="row">
                         <div class="col-md-6">
@@ -85,49 +86,49 @@
 
 @code {
     private RegisterModel model = new();
-    private string errorMessage = string.Empty;
+  private string errorMessage = string.Empty;
     private bool isSubmitting = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async System.Threading.Tasks.Task OnInitializedAsync()
     {
-        // Initialize the model with empty values
-        model = new RegisterModel();
- }
+   // Initialize the model with empty values
+  model = new RegisterModel();
+    }
 
-    private async Task HandleValidSubmit()
+    private async System.Threading.Tasks.Task HandleValidSubmit()
     {
         isSubmitting = true;
-        errorMessage = string.Empty;
+   errorMessage = string.Empty;
         StateHasChanged();
 
-        try
-    {
-     var user = new ApplicationUser
-            {
-             UserName = model.Email,
-      Email = model.Email
- };
-
-  var result = await UserManager.CreateAsync(user, model.Password);
-
-  if (result.Succeeded)
-            {
-  await SignInManager.SignInAsync(user, isPersistent: false);
-    NavigationManager.NavigateTo("/", forceLoad: true);
-       }
-  else
-            {
-  errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
-         }
- }
-        catch (Exception ex)
-     {
-            errorMessage = "An error occurred during registration.";
-    Console.WriteLine($"Registration error: {ex.Message}");
-        }
-  finally
+try
         {
-            isSubmitting = false;
+     var user = new ApplicationUser
+    {
+                UserName = model.Email,
+   Email = model.Email
+         };
+
+   var result = await UserManager.CreateAsync(user, model.Password);
+
+         if (result.Succeeded)
+       {
+      await SignInManager.SignInAsync(user, isPersistent: false);
+         NavigationManager.NavigateTo("/", forceLoad: true);
+            }
+        else
+            {
+        errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+    errorMessage = "An error occurred during registration.";
+  Console.WriteLine($"Registration error: {ex.Message}");
+        }
+        finally
+        {
+         isSubmitting = false;
             StateHasChanged();
         }
     }

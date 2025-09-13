@@ -10,7 +10,13 @@ namespace ProjeX.Application.Project.Commands
         
         [Required]
         public Guid ClientId { get; set; }
-        
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        [Required]
+        public DateTime EndDate { get; set; }
+
         [Required]
         [Range(0, double.MaxValue, ErrorMessage = "Budget must be positive")]
         public decimal Budget { get; set; }

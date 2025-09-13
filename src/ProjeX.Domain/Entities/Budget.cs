@@ -21,6 +21,10 @@ namespace ProjeX.Domain.Entities
         public DateTime? ApprovedAt { get; set; }
         public string Notes { get; set; } = string.Empty;
 
+        // Additional properties for compatibility
+        public decimal AllocatedAmount => PlannedAmount;
+        public decimal SpentAmount => ActualAmount;
+
         // Navigation properties
         public virtual Project Project { get; set; } = null!;
         public virtual Path? Path { get; set; }

@@ -10,7 +10,7 @@ namespace ProjeX.Application.TaskManagement
         public string DeliverableName { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public TaskStatus Status { get; set; }
+        public ProjeX.Domain.Enums.TaskStatus Status { get; set; }
         public string StatusName { get; set; } = string.Empty;
         public DateTime PlannedStartDate { get; set; }
         public DateTime PlannedEndDate { get; set; }
@@ -76,7 +76,7 @@ namespace ProjeX.Application.TaskManagement
         public string Description { get; set; } = string.Empty;
         
         [Required]
-        public TaskStatus Status { get; set; }
+        public ProjeX.Domain.Enums.TaskStatus Status { get; set; }
         
         [Required]
         public DateTime PlannedStartDate { get; set; }

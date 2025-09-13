@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,7 @@ namespace ProjeX.Infrastructure.Services
 {
     public static class DataSeeder
     {
-        public static async Task SeedAsync(IServiceProvider serviceProvider)
+        public static async System.Threading.Tasks.Task SeedAsync(IServiceProvider serviceProvider)
         {
             using var scope = serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -45,7 +46,7 @@ namespace ProjeX.Infrastructure.Services
             }
         }
 
-        private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager, ILogger logger)
+        private static async System.Threading.Tasks.Task SeedRolesAsync(RoleManager<IdentityRole> roleManager, ILogger logger)
         {
             var roles = new[] { "Admin", "Manager", "Employee" };
 
@@ -59,7 +60,7 @@ namespace ProjeX.Infrastructure.Services
             }
         }
 
-        private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager, ILogger logger)
+        private static async System.Threading.Tasks.Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager, ILogger logger)
         {
             var adminEmail = "admin@lastminute.com";
             var adminUser = await userManager.FindByEmailAsync(adminEmail);
@@ -106,7 +107,7 @@ namespace ProjeX.Infrastructure.Services
             }
         }
 
-        private static async Task SeedRolesCatalogAsync(ApplicationDbContext context, ILogger logger)
+        private static async System.Threading.Tasks.Task SeedRolesCatalogAsync(ApplicationDbContext context, ILogger logger)
         {
             if (!context.RolesCatalogs.Any())
             {
@@ -180,7 +181,7 @@ namespace ProjeX.Infrastructure.Services
             }
         }
 
-        private static async Task SeedBasicClientsAsync(ApplicationDbContext context, ILogger logger)
+        private static async System.Threading.Tasks.Task SeedBasicClientsAsync(ApplicationDbContext context, ILogger logger)
         {
             if (!context.Clients.Any())
             {

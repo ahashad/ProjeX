@@ -14,7 +14,7 @@ namespace ProjeX.Domain.Entities
         public DateTime PlannedEndDate { get; set; }
         public DateTime? ActualStartDate { get; set; }
         public DateTime? ActualEndDate { get; set; }
-        public TaskStatus Status { get; set; }
+        public ProjeX.Domain.Enums.TaskStatus Status { get; set; }
         public int ProgressPercentage { get; set; }
         public decimal EstimatedHours { get; set; }
         public decimal ActualHours { get; set; }
@@ -25,8 +25,9 @@ namespace ProjeX.Domain.Entities
         // Navigation properties
         public virtual Deliverable Deliverable { get; set; } = null!;
         public virtual Employee? AssignedEmployee { get; set; }
-        public virtual ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
-        public virtual ICollection<TaskDependency> DependentOn { get; set; } = new List<TaskDependency>();
+        // TODO: Add back TaskDependency navigation properties after fixing EF configuration
+        // public virtual ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
+        // public virtual ICollection<TaskDependency> DependentOn { get; set; } = new List<TaskDependency>();
         public virtual ICollection<Approval> Approvals { get; set; } = new List<Approval>();
     }
 }

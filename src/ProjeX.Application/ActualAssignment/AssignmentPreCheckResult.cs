@@ -15,14 +15,5 @@ namespace ProjeX.Application.ActualAssignment
         public bool HasWarnings => Warnings.Any();
         public bool IsValid => !HasBlockers;
     }
-
-    public class AssignmentCreationResult
-    {
-        public bool IsSuccess { get; set; }
-        public Guid? AssignmentId { get; set; }
-        public AssignmentDto? Assignment { get; set; }
-        public List<string> Errors { get; set; } = new();
-        public List<string> Warnings { get; set; } = new();
-    }
 }
 

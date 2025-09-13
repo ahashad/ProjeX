@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(dotnet build)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet dev-certs:*)",
+      "Bash(dotnet run --launch-profile https)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(del \"20250913122724_ConfigureTaskDependencyRelationship.cs\")",
+      "Bash(del \"20250913122724_ConfigureTaskDependencyRelationship.Designer.cs\")",
+      "Bash(del \"20250913123246_FixGoodsReceiptItemCascadeDelete.cs\")",
+      "Bash(del \"20250913123246_FixGoodsReceiptItemCascadeDelete.Designer.cs\")",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(dotnet clean:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

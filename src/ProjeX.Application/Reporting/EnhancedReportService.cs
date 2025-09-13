@@ -28,7 +28,7 @@ namespace ProjeX.Application.Reporting
             dashboard.TotalActiveProjects = activeProjects.Count;
             dashboard.TotalContractValue = activeProjects.Sum(p => p.ContractValue);
             dashboard.TotalBudgetAllocated = await _context.Budgets
-                .Where(b => b.Status == BudgetStatus.Approved)
+                .Where(b => b.IsApproved)
                 .SumAsync(b => b.AllocatedAmount);
             dashboard.TotalBudgetSpent = await _context.Budgets
                 .SumAsync(b => b.SpentAmount);
@@ -84,7 +84,7 @@ namespace ProjeX.Application.Reporting
                 var budgetAllocated = project.Budgets.Sum(b => b.AllocatedAmount);
                 var budgetSpent = project.Budgets.Sum(b => b.SpentAmount);
                 var deliverableProgress = project.Deliverables.Any() 
-                    ? project.Deliverables.Average(d => d.ProgressPercentage) 
+                    ? project.Deliverables.Average(d => (double)d.ProgressPercentage) 
                     : 0;
 
                 var performance = new ProjectPerformanceDto
@@ -100,8 +100,10 @@ namespace ProjeX.Application.Reporting
                     BudgetSpent = budgetSpent,
                     BudgetVariance = budgetAllocated - budgetSpent,
                     BudgetVariancePercent = budgetAllocated > 0 ? ((budgetAllocated - budgetSpent) / budgetAllocated) * 100 : 0,
-                    ScheduleVarianceDays = (project.EndDate - DateTime.UtcNow).Days,
-                    ProgressPercent = (int)deliverableProgress,
+                    ScheduleVarianceDays = project.ActualEndDate.HasValue ? 
+     (project.ActualEndDate.Value - project.EndDate).Days :
+          (DateTime.UtcNow - project.EndDate).Days,
+                    ProgressPercent = (int)Math.Round(deliverableProgress),
                     TeamSize = project.ActualAssignments.Count(a => a.Status == AssignmentStatus.Active),
                     IsOnTrack = deliverableProgress >= 80 && budgetSpent <= budgetAllocated * 0.9m
                 };
@@ -134,7 +136,7 @@ namespace ProjeX.Application.Reporting
                 EmployeeUtilization = new List<EmployeeUtilizationDto>()
             };
 
-            foreach (var employee in employees)
+foreach (var employee in employees)
             {
                 var assignments = employee.ActualAssignments
                     .Where(a => a.Status == AssignmentStatus.Active &&
@@ -284,8 +286,8 @@ namespace ProjeX.Application.Reporting
 
                 trends.Add(new TrendDataDto
                 {
-                    Period = monthStart.ToString("yyyy-MM"),
-                    Value = totalCapacity > 0 ? (double)((utilization / totalCapacity) * 100) : 0
+                    Period = monthStart, // DateTime instead of string
+                    Value = totalCapacity > 0 ? (decimal)((utilization / totalCapacity) * 100) : 0 // Cast to decimal
                 });
             }
 
@@ -327,7 +329,7 @@ namespace ProjeX.Application.Reporting
 
             if (!completedDeliverables.Any()) return 0;
 
-            var onTimeCount = completedDeliverables.Count(d => d.ActualEndDate <= d.EndDate);
+            var onTimeCount = completedDeliverables.Count(d => d.ActualEndDate <= d.DueDate); // Use DueDate instead of EndDate
             return ((decimal)onTimeCount / completedDeliverables.Count) * 100;
         }
 
@@ -379,7 +381,9 @@ namespace ProjeX.Application.Reporting
 
                 breakdown.Add(new MonthlyFinancialDto
                 {
-                    Month = current.ToString("yyyy-MM"),
+                    Year = current.Year, // Use Year property
+                    Month = current.Month, // Use Month property
+                    MonthName = current.ToString("MMMM yyyy"), // Add month name
                     Revenue = revenue,
                     Expenses = expenses,
                     Profit = revenue - expenses

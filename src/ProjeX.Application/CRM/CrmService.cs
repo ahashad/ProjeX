@@ -253,7 +253,7 @@ namespace ProjeX.Application.CRM
             return await GetTenderByIdAsync(id) ?? throw new InvalidOperationException("Failed to retrieve updated tender");
         }
 
-        public async Task<CrmDashboardDto> GetCrmDashboardAsync()
+        public async Task<CrmDashboardDto> GetDashboardAsync()
         {
             var totalAccounts = await _context.Accounts.CountAsync(a => a.IsActive);
             var totalOpportunities = await _context.Opportunities.CountAsync(o => o.IsActive);

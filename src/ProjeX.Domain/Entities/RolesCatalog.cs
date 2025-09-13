@@ -5,6 +5,7 @@ namespace ProjeX.Domain.Entities
     public class RolesCatalog : AuditableEntity
     {
         public string RoleName { get; set; }
+        public string Name => RoleName; // Alias for backward compatibility
         public int Level { get; set; }
         public decimal DefaultSalary { get; set; }
         public decimal DefaultMonthlyIncentive { get; set; }
@@ -12,5 +13,6 @@ namespace ProjeX.Domain.Entities
         public string Notes { get; set; }
     }
 }
+
 
 

@@ -21,6 +21,10 @@ namespace ProjeX.Domain.Entities
         public DateTime? PaidDate { get; set; }
         public string? PaymentReference { get; set; }
         
+        // Additional properties needed by services
+        public string Description { get; set; } = string.Empty;
+        public string Currency { get; set; } = "USD";
+        
         // Navigation properties
         public ICollection<InvoiceLineItem> LineItems { get; set; } = new List<InvoiceLineItem>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();

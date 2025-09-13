@@ -268,15 +268,16 @@ namespace ProjeX.Application.InvoicePlanning
         {
             // Calculate based on time entries and expenses for the period
             var timeEntries = await _context.TimeEntries
-                .Where(te => te.ProjectId == schedule.InvoicePlan.ProjectId &&
+                .Where(te => te.ActualAssignment.ProjectId == schedule.InvoicePlan.ProjectId &&
                             te.Date >= schedule.ScheduledDate.AddDays(-30) &&
-                            te.Date <= schedule.ScheduledDate)
-                .SumAsync(te => te.Hours * te.HourlyRate);
+                            te.Date <= schedule.ScheduledDate &&
+      te.BillableRate.HasValue)
+  .SumAsync(te => te.Hours * te.BillableRate.Value); // Use BillableRate instead of HourlyRate
 
             var expenses = await _context.Overheads
                 .Where(o => o.ProjectId == schedule.InvoicePlan.ProjectId &&
-                           o.Date >= schedule.ScheduledDate.AddDays(-30) &&
-                           o.Date <= schedule.ScheduledDate)
+                           o.CreatedAt >= schedule.ScheduledDate.AddDays(-30) &&
+                           o.CreatedAt <= schedule.ScheduledDate)
                 .SumAsync(o => o.Amount);
 
             return timeEntries + expenses;

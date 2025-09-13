@@ -9,7 +9,7 @@ This guide provides detailed instructions for setting up and running the ProjeX 
 
 Ensure you have the following software installed on your system:
 
-- **.NET 8 SDK**: [Download and install the .NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- **.NET 10 SDK**: [Download and install the .NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - **SQL Server**: [SQL Server Express](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or any other version of SQL Server.
 - **Git**: [Download and install Git](https://git-scm.com/downloads)
 

@@ -1,6 +1,6 @@
 using AutoMapper;
 using ProjeX.Application.PlannedTeamSlot.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProjeX.Domain.Enums;

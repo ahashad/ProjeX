@@ -1,6 +1,6 @@
 using AutoMapper;
 using ProjeX.Application.Employee.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ProjeX.Application.Employee

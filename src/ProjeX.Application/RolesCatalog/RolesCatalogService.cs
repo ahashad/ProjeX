@@ -1,6 +1,6 @@
 using AutoMapper;
 using ProjeX.Application.RolesCatalog.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ProjeX.Application.RolesCatalog

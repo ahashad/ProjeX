@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AutoMapper;
 using ProjeX.Application.Overhead.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ProjeX.Application.Overhead

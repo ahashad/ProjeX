@@ -1,6 +1,6 @@
 using AutoMapper;
 using ProjeX.Application.TimeEntry.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using ProjeX.Domain.Enums;
 

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using ProjeX.Application.Project.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using ProjeX.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 

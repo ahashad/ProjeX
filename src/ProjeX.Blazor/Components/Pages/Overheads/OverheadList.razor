@@ -42,7 +42,7 @@ else
                         <Template>
                             @{
                                 var overhead = (context as OverheadDto);
-                                var badgeClass = GetCategoryBadgeClass(overhead?.Category ?? OverheadCategory.General);
+                                var badgeClass = GetCategoryBadgeClass(overhead?.Category ?? OverheadCategory.Miscellaneous);
                             }
                             <span class="badge @badgeClass">@overhead?.Category</span>
                         </Template>
@@ -174,12 +174,12 @@ else
     {
         return category switch
         {
-            OverheadCategory.General => "bg-secondary",
             OverheadCategory.Travel => "bg-primary",
-            OverheadCategory.Equipment => "bg-info",
-            OverheadCategory.Software => "bg-success",
-            OverheadCategory.Training => "bg-warning",
-            OverheadCategory.Marketing => "bg-danger",
+            OverheadCategory.Accommodation => "bg-info",
+            OverheadCategory.Meals => "bg-success",
+            OverheadCategory.Software => "bg-warning",
+            OverheadCategory.Hardware => "bg-danger",
+            OverheadCategory.Miscellaneous => "bg-secondary",
             _ => "bg-secondary"
         };
     }

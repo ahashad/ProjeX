@@ -141,7 +141,7 @@ else
                     {
                         <SfChart Title="Deliverables by Status" Height="300px">
                             <ChartSeriesCollection>
-                                <ChartSeries DataSource="@deliverableStatusData" XName="Status" YName="Count" Type="ChartSeriesType.Pie">
+                                <ChartSeries DataSource="@deliverableStatusData" XName="Status" YName="Count" Type="ChartSeriesType.Column">
                                     <ChartMarker>
                                         <ChartDataLabel Visible="true" Name="Status"></ChartDataLabel>
                                     </ChartMarker>
@@ -174,7 +174,7 @@ else
                             {
                                 <div class="list-group-item d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">@project.Name</h6>
+                                        <h6 class="mb-1">@project.ProjectName</h6>
                                         <small class="text-muted">@project.ClientName</small>
                                     </div>
                                     <span class="badge @GetProjectStatusBadgeClass(project.Status)">@project.Status</span>
@@ -296,7 +296,7 @@ else
             var projectsTask = ProjectService.GetAllAsync();
             var clientsTask = ClientService.GetAllAsync();
             var employeesTask = EmployeeService.GetAllAsync();
-            var timeEntriesTask = TimeEntryService.GetAllAsync();
+            var timeEntriesTask = TimeEntryService.GetTimeEntriesAsync(null, null);
             var deliverablesTask = DeliverableService.GetAllAsync();
             var overheadsTask = OverheadService.GetAllAsync();
 
@@ -310,7 +310,7 @@ else
             var overheads = await overheadsTask;
 
             // Calculate metrics
-            activeProjectsCount = projects.Count(p => p.Status == ProjectStatus.Active);
+            activeProjectsCount = projects.Count(p => p.Status == ProjectStatus.InProgress);
             totalClientsCount = clients.Count(c => c.Status == ClientStatus.Active);
             totalEmployeesCount = employees.Count();
 
@@ -319,7 +319,7 @@ else
 
             monthlyHours = timeEntries
                 .Where(te => te.Date.Month == currentMonth && te.Date.Year == currentYear)
-                .Sum(te => (decimal)te.Hours);
+                .Sum(te => te.Hours);
 
             monthlyOverheads = overheads
                 .Where(o => o.Date.Month == currentMonth && o.Date.Year == currentYear)
@@ -370,10 +370,11 @@ else
     {
         return status switch
         {
-            ProjectStatus.Active => "bg-success",
+            ProjectStatus.InProgress => "bg-success",
             ProjectStatus.OnHold => "bg-warning",
             ProjectStatus.Completed => "bg-primary",
             ProjectStatus.Cancelled => "bg-danger",
+            ProjectStatus.Planned => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -382,10 +383,10 @@ else
     {
         return status switch
         {
-            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.Pending => "bg-secondary",
             DeliverableStatus.InProgress => "bg-primary",
             DeliverableStatus.Completed => "bg-success",
-            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Delayed => "bg-warning",
             DeliverableStatus.Cancelled => "bg-danger",
             _ => "bg-secondary"
         };

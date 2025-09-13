@@ -45,7 +45,7 @@ else
                         <Template>
                             @{
                                 var deliverable = (context as DeliverableDto);
-                                var badgeClass = GetStatusBadgeClass(deliverable?.Status ?? DeliverableStatus.NotStarted);
+                                var badgeClass = GetStatusBadgeClass(deliverable?.Status ?? DeliverableStatus.Pending);
                             }
                             <span class="badge @badgeClass">@deliverable?.Status</span>
                         </Template>
@@ -59,13 +59,15 @@ else
                                 <a href="/deliverables/details/@deliverable?.Id" class="btn btn-outline-info" title="Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <AuthorizeView Policy="ManagerOrAdmin">
-                                    <a href="/deliverables/edit/@deliverable?.Id" class="btn btn-outline-warning" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(deliverable!)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                <AuthorizeView Policy="ManagerOrAdmin" Context="gridAuth">
+                                    <Authorized>
+                                        <a href="/deliverables/edit/@deliverable?.Id" class="btn btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(deliverable!)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </Authorized>
                                 </AuthorizeView>
                             </div>
                         </Template>
@@ -159,10 +161,10 @@ else
     {
         return status switch
         {
-            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.Pending => "bg-secondary",
             DeliverableStatus.InProgress => "bg-primary",
             DeliverableStatus.Completed => "bg-success",
-            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Delayed => "bg-warning",
             DeliverableStatus.Cancelled => "bg-danger",
             _ => "bg-secondary"
         };

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ProjeX.Application.ChangeRequest.Commands;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using ProjeX.Domain.Enums;
 
 namespace ProjeX.Application.ChangeRequest

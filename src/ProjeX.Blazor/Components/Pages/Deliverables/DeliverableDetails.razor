@@ -120,7 +120,7 @@ else
                 <div class="card-body">
                     <AuthorizeView Policy="ManagerOrAdmin">
                         <div class="d-grid gap-2">
-                            @if (deliverable.Status == DeliverableStatus.NotStarted)
+                            @if (deliverable.Status == DeliverableStatus.Pending)
                             {
                                 <button class="btn btn-success btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.InProgress)">
                                     <i class="fas fa-play me-2"></i>Start Work
@@ -131,11 +131,11 @@ else
                                 <button class="btn btn-primary btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.Completed)">
                                     <i class="fas fa-check me-2"></i>Mark Complete
                                 </button>
-                                <button class="btn btn-warning btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.OnHold)">
-                                    <i class="fas fa-pause me-2"></i>Put On Hold
+                                <button class="btn btn-warning btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.Delayed)">
+                                    <i class="fas fa-pause me-2"></i>Mark Delayed
                                 </button>
                             }
-                            else if (deliverable.Status == DeliverableStatus.OnHold)
+                            else if (deliverable.Status == DeliverableStatus.Delayed)
                             {
                                 <button class="btn btn-success btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.InProgress)">
                                     <i class="fas fa-play me-2"></i>Resume Work
@@ -211,10 +211,10 @@ else
     {
         return status switch
         {
-            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.Pending => "bg-secondary",
             DeliverableStatus.InProgress => "bg-primary",
             DeliverableStatus.Completed => "bg-success",
-            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Delayed => "bg-warning",
             DeliverableStatus.Cancelled => "bg-danger",
             _ => "bg-secondary"
         };

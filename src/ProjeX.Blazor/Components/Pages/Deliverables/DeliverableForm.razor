@@ -51,7 +51,7 @@
                                                @bind-Value="command.ProjectId"
                                                Placeholder="Select a project"
                                                CssClass="form-control">
-                                    <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                                    <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
                                 </SfDropDownList>
                                 <ValidationMessage For="@(() => command.ProjectId)" />
                             </div>
@@ -117,7 +117,7 @@
         else
         {
             command.DueDate = DateTime.Today.AddDays(30); // Default to 30 days from now
-            command.Status = DeliverableStatus.NotStarted;
+            command.Status = DeliverableStatus.Pending;
         }
     }
 

@@ -79,7 +79,7 @@
                                                @bind-Value="command.ProjectId"
                                                Placeholder="Select a project"
                                                CssClass="form-control">
-                                    <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                                    <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
                                 </SfDropDownList>
                                 <ValidationMessage For="@(() => command.ProjectId)" />
                             </div>
@@ -127,7 +127,7 @@
         else
         {
             command.Date = DateTime.Today;
-            command.Category = OverheadCategory.General;
+            command.Category = OverheadCategory.Miscellaneous;
         }
     }
 

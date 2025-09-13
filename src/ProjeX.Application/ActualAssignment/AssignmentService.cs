@@ -1,7 +1,7 @@
 using AutoMapper;
 using ProjeX.Application.ActualAssignment.Commands;
 using ProjeX.Application.Employee;
-using LastMinute.Consultancy.Infrastructure.Data;
+using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using ProjeX.Domain.Enums;
 

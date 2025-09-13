@@ -3,6 +3,7 @@
 @using LastMinute.Consultancy.Application.Client
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Notifications
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IClientService ClientService
 @inject NavigationManager Navigation
@@ -83,10 +84,14 @@ else
     </DialogButtons>
 </SfDialog>
 
+<SfToast @ref="toastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
 @code {
     private List<ClientDto>? clients;
     private bool showDeleteDialog = false;
     private ClientDto? selectedClient;
+    private SfToast? toastObj;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,8 +106,8 @@ else
         }
         catch (Exception ex)
         {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error loading clients: {ex.Message}");
+            errorMessage = $"Error loading clients: {ex.Message}";
+            await ShowErrorAsync();
         }
     }
 
@@ -131,9 +136,17 @@ else
             }
             catch (Exception ex)
             {
-                // TODO: Add proper error handling/notification
-                Console.WriteLine($"Error deleting client: {ex.Message}");
+                errorMessage = $"Error deleting client: {ex.Message}";
+                await ShowErrorAsync();
             }
+        }
+    }
+
+    private async Task ShowErrorAsync()
+    {
+        if (toastObj != null && !string.IsNullOrEmpty(errorMessage))
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = errorMessage });
         }
     }
 }

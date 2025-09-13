@@ -4,6 +4,10 @@
 @attribute [Authorize]
 @inject IProjectService ProjectService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@using Microsoft.AspNetCore.Components.Authorization
+@using ProjeX.Domain.Entities
 
 <PageTitle>Project Details - ProjeX</PageTitle>
 
@@ -182,9 +186,18 @@ else
     [Parameter] public Guid Id { get; set; }
 
     private ProjectDto? project;
+    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            currentUserId = appUser?.Id;
+        }
         await LoadProject();
     }
 

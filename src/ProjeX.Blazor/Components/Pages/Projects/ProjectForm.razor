@@ -11,6 +11,10 @@
 @inject IProjectService ProjectService
 @inject IClientService ClientService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@using Microsoft.AspNetCore.Components.Authorization
+@using ProjeX.Domain.Entities
 
 <PageTitle>@(IsEdit ? "Edit Project" : "Create Project") - ProjeX</PageTitle>
 
@@ -160,9 +164,19 @@
     private bool isSubmitting = false;
 
     private bool IsEdit => Id.HasValue;
+    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            currentUserId = appUser?.Id;
+        }
+
         await LoadClients();
         if (IsEdit && Id.HasValue)
         {
@@ -244,7 +258,7 @@
                     Status = model.Status,
                     Notes = model.Notes
                 };
-                await ProjectService.UpdateAsync(updateCommand);
+                await ProjectService.UpdateAsync(updateCommand, currentUserId);
             }
             else
             {
@@ -260,7 +274,7 @@
                     Status = model.Status,
                     Notes = model.Notes
                 };
-                await ProjectService.CreateAsync(createCommand);
+                await ProjectService.CreateAsync(createCommand, currentUserId);
             }
 
             Navigation.NavigateTo("/projects");

@@ -38,15 +38,14 @@ namespace ProjeX.Infrastructure.Interceptors
                 if (entry.State == EntityState.Added)
                 {
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    entry.Entity.CreatedBy = currentUser;
-                    entry.Entity.ModifiedBy = currentUser; // Set ModifiedBy for new entities
+
                     entry.Entity.ModifiedAt = DateTime.UtcNow; // Set ModifiedAt for new entities
                 }
 
                 if (entry.State == EntityState.Modified)
                 {
                     entry.Entity.ModifiedAt = DateTime.UtcNow;
-                    entry.Entity.ModifiedBy = currentUser;
+
                 }
             }
         }
@@ -56,10 +55,7 @@ namespace ProjeX.Infrastructure.Interceptors
             var user = _httpContextAccessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated == true)
             {
-                return user.FindFirst(ClaimTypes.Name)?.Value 
-                    ?? user.FindFirst(ClaimTypes.Email)?.Value 
-                    ?? user.Identity.Name 
-                    ?? "System";
+                return user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "System";
             }
             return "System";
         }

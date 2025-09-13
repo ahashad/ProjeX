@@ -119,7 +119,7 @@ namespace ProjeX.Application.Project
             };
         }
 
-        public async Task<ProjectDto> CreateAsync(CreateProjectCommand command, string userId)
+       public async Task<ProjectDto> CreateAsync(CreateProjectCommand command, string userId)
         {
             var client = await _context.Clients
                 .FirstOrDefaultAsync(c => c.Id == command.ClientId && !c.IsDeleted);

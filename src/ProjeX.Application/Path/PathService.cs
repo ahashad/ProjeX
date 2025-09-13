@@ -1,6 +1,5 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using ProjeX.Application.Path.Commands;
 using ProjeX.Infrastructure.Data;
 
 namespace ProjeX.Application.Path
@@ -54,19 +53,19 @@ namespace ProjeX.Application.Path
             return path != null ? _mapper.Map<PathDto>(path) : null;
         }
 
-        public async Task<PathDto> CreateAsync(CreatePathCommand command)
+        public async Task<PathDto> CreateAsync(CreatePathRequest request)
         {
             // Validate project exists
-            var project = await _context.Projects.FindAsync(command.ProjectId);
+            var project = await _context.Projects.FindAsync(request.ProjectId);
             if (project == null)
                 throw new ArgumentException("Project not found");
 
             // Validate allocation doesn't exceed 100%
-            var isValidAllocation = await ValidatePathAllocationAsync(command.ProjectId, command.AllowedAllocationPercentage);
+            var isValidAllocation = await ValidatePathAllocationAsync(request.ProjectId, request.AllowedAllocationPercentage);
             if (!isValidAllocation)
                 throw new InvalidOperationException("Total path allocation would exceed 100%");
 
-            var path = _mapper.Map<Domain.Entities.Path>(command);
+            var path = _mapper.Map<Domain.Entities.Path>(request);
             
             _context.Paths.Add(path);
             await _context.SaveChangesAsync();
@@ -74,18 +73,18 @@ namespace ProjeX.Application.Path
             return await GetByIdAsync(path.Id) ?? throw new InvalidOperationException("Failed to retrieve created path");
         }
 
-        public async Task<PathDto> UpdateAsync(UpdatePathCommand command)
+        public async Task<PathDto> UpdateAsync(UpdatePathRequest request)
         {
-            var path = await _context.Paths.FindAsync(command.Id);
+            var path = await _context.Paths.FindAsync(request.Id);
             if (path == null)
                 throw new ArgumentException("Path not found");
 
             // Validate allocation doesn't exceed 100%
-            var isValidAllocation = await ValidatePathAllocationAsync(path.ProjectId, command.AllowedAllocationPercentage, command.Id);
+            var isValidAllocation = await ValidatePathAllocationAsync(path.ProjectId, request.AllowedAllocationPercentage, request.Id);
             if (!isValidAllocation)
                 throw new InvalidOperationException("Total path allocation would exceed 100%");
 
-            _mapper.Map(command, path);
+            _mapper.Map(request, path);
             
             await _context.SaveChangesAsync();
 

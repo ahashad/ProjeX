@@ -1,5 +1,4 @@
 using AutoMapper;
-using ProjeX.Application.Budget.Commands;
 using ProjeX.Domain.Entities;
 
 namespace ProjeX.Application.Budget
@@ -14,13 +13,13 @@ namespace ProjeX.Application.Budget
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.ToString()))
                 .ForMember(dest => dest.ApprovedByName, opt => opt.MapFrom(src => src.ApprovedBy != null ? $"{src.ApprovedBy.FirstName} {src.ApprovedBy.LastName}" : string.Empty));
 
-            CreateMap<CreateBudgetCommand, Domain.Entities.Budget>()
+            CreateMap<CreateBudgetRequest, Domain.Entities.Budget>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
                 .ForMember(dest => dest.ActualAmount, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.CommittedAmount, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.IsApproved, opt => opt.MapFrom(src => false));
 
-            CreateMap<UpdateBudgetCommand, Domain.Entities.Budget>()
+            CreateMap<UpdateBudgetRequest, Domain.Entities.Budget>()
                 .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())

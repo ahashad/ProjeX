@@ -1,4 +1,3 @@
-using ProjeX.Application.Budget.Commands;
 using ProjeX.Domain.Enums;
 
 namespace ProjeX.Application.Budget
@@ -9,8 +8,8 @@ namespace ProjeX.Application.Budget
         Task<IEnumerable<BudgetDto>> GetByProjectIdAsync(Guid projectId);
         Task<IEnumerable<BudgetDto>> GetByPathIdAsync(Guid pathId);
         Task<BudgetDto?> GetByIdAsync(Guid id);
-        Task<BudgetDto> CreateAsync(CreateBudgetCommand command);
-        Task<BudgetDto> UpdateAsync(UpdateBudgetCommand command);
+        Task<BudgetDto> CreateAsync(CreateBudgetRequest request);
+        Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> ApproveBudgetAsync(Guid id, Guid approvedById);
         Task<decimal> GetTotalBudgetByProjectAsync(Guid projectId);

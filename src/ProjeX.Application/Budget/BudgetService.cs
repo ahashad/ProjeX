@@ -1,6 +1,5 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using ProjeX.Application.Budget.Commands;
 using ProjeX.Domain.Enums;
 using ProjeX.Infrastructure.Data;
 
@@ -63,26 +62,26 @@ namespace ProjeX.Application.Budget
             return budget != null ? _mapper.Map<BudgetDto>(budget) : null;
         }
 
-        public async Task<BudgetDto> CreateAsync(CreateBudgetCommand command)
+        public async Task<BudgetDto> CreateAsync(CreateBudgetRequest request)
         {
             // Validate project exists
-            var project = await _context.Projects.FindAsync(command.ProjectId);
+            var project = await _context.Projects.FindAsync(request.ProjectId);
             if (project == null)
                 throw new ArgumentException("Project not found");
 
             // Validate path exists if specified
-            if (command.PathId.HasValue)
+            if (request.PathId.HasValue)
             {
-                var path = await _context.Paths.FindAsync(command.PathId.Value);
-                if (path == null || path.ProjectId != command.ProjectId)
+                var path = await _context.Paths.FindAsync(request.PathId.Value);
+                if (path == null || path.ProjectId != request.ProjectId)
                     throw new ArgumentException("Path not found or doesn't belong to the project");
             }
 
             // Validate dates are within project window
-            if (command.PeriodStart < project.StartDate || command.PeriodEnd > project.EndDate)
+            if (request.PeriodStart < project.StartDate || request.PeriodEnd > project.EndDate)
                 throw new InvalidOperationException("Budget period must be within project dates");
 
-            var budget = _mapper.Map<Domain.Entities.Budget>(command);
+            var budget = _mapper.Map<Domain.Entities.Budget>(request);
             
             _context.Budgets.Add(budget);
             await _context.SaveChangesAsync();
@@ -90,25 +89,25 @@ namespace ProjeX.Application.Budget
             return await GetByIdAsync(budget.Id) ?? throw new InvalidOperationException("Failed to retrieve created budget");
         }
 
-        public async Task<BudgetDto> UpdateAsync(UpdateBudgetCommand command)
+        public async Task<BudgetDto> UpdateAsync(UpdateBudgetRequest request)
         {
-            var budget = await _context.Budgets.Include(b => b.Project).FirstOrDefaultAsync(b => b.Id == command.Id);
+            var budget = await _context.Budgets.Include(b => b.Project).FirstOrDefaultAsync(b => b.Id == request.Id);
             if (budget == null)
                 throw new ArgumentException("Budget not found");
 
             // Validate path exists if specified
-            if (command.PathId.HasValue)
+            if (request.PathId.HasValue)
             {
-                var path = await _context.Paths.FindAsync(command.PathId.Value);
+                var path = await _context.Paths.FindAsync(request.PathId.Value);
                 if (path == null || path.ProjectId != budget.ProjectId)
                     throw new ArgumentException("Path not found or doesn't belong to the project");
             }
 
             // Validate dates are within project window
-            if (command.PeriodStart < budget.Project.StartDate || command.PeriodEnd > budget.Project.EndDate)
+            if (request.PeriodStart < budget.Project.StartDate || request.PeriodEnd > budget.Project.EndDate)
                 throw new InvalidOperationException("Budget period must be within project dates");
 
-            _mapper.Map(command, budget);
+            _mapper.Map(request, budget);
             
             await _context.SaveChangesAsync();
 

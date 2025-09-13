@@ -1,10 +1,10 @@
 @page "/projects/create"
 @page "/projects/edit/{id:guid}"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Project
-@using LastMinute.Consultancy.Application.Project.Commands
-@using LastMinute.Consultancy.Application.Client
-@using LastMinute.Consultancy.Domain.Enums
+@using ProjeX.Application.Project
+@using ProjeX.Application.Project.Commands
+@using ProjeX.Application.Client
+@using ProjeX.Domain.Enums
 @using System.ComponentModel.DataAnnotations
 @using Syncfusion.Blazor.Calendars
 @attribute [Authorize(Policy = "ManagerOrAdmin")]

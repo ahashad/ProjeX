@@ -1,6 +1,6 @@
 @page "/clients/details/{id:guid}"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Client
+@using ProjeX.Application.Client
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IClientService ClientService
 @inject NavigationManager Navigation

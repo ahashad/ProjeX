@@ -1,6 +1,6 @@
 @page "/projects"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Project
+@using ProjeX.Application.Project
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Popups
 @attribute [Authorize]
@@ -115,7 +115,7 @@ else
         }
     }
 
-    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.ProjectStatus? status)
+    private string GetStatusBadgeClass(ProjeX.Domain.Enums.ProjectStatus? status)
     {
         return status?.ToString() switch
         {

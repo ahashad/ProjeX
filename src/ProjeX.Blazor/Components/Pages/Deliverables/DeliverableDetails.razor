@@ -1,0 +1,239 @@
+@page "/deliverables/details/{Id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Deliverable
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Notifications
+@attribute [Authorize]
+@inject IDeliverableService DeliverableService
+@inject NavigationManager Navigation
+
+<PageTitle>Deliverable Details - ProjeX</PageTitle>
+
+@if (deliverable == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Deliverable Details</h1>
+        <div class="btn-group">
+            <a href="/deliverables" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+            <AuthorizeView Policy="ManagerOrAdmin">
+                <a href="/deliverables/edit/@deliverable.Id" class="btn btn-primary">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </a>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">@deliverable.Title</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <strong>Status:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            <span class="badge @GetStatusBadgeClass(deliverable.Status)">@deliverable.Status</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <strong>Project:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            @deliverable.ProjectName
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <strong>Due Date:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            @deliverable.DueDate.ToString("MMMM dd, yyyy")
+                            @if (deliverable.DueDate < DateTime.Today && deliverable.Status != DeliverableStatus.Completed)
+                            {
+                                <span class="badge bg-danger ms-2">Overdue</span>
+                            }
+                            else if (deliverable.DueDate <= DateTime.Today.AddDays(7) && deliverable.Status != DeliverableStatus.Completed)
+                            {
+                                <span class="badge bg-warning ms-2">Due Soon</span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(deliverable.Description))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-sm-3">
+                                <strong>Description:</strong>
+                            </div>
+                            <div class="col-sm-9">
+                                <p class="mb-0">@deliverable.Description</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Audit Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Created By:</small><br>
+                        <strong>@deliverable.CreatedBy</strong><br>
+                        <small class="text-muted">@deliverable.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+                    </div>
+
+                    @if (deliverable.ModifiedAt.HasValue)
+                    {
+                        <div class="mb-3">
+                            <small class="text-muted">Last Modified By:</small><br>
+                            <strong>@deliverable.ModifiedBy</strong><br>
+                            <small class="text-muted">@deliverable.ModifiedAt.Value.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <AuthorizeView Policy="ManagerOrAdmin">
+                        <div class="d-grid gap-2">
+                            @if (deliverable.Status == DeliverableStatus.NotStarted)
+                            {
+                                <button class="btn btn-success btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.InProgress)">
+                                    <i class="fas fa-play me-2"></i>Start Work
+                                </button>
+                            }
+                            else if (deliverable.Status == DeliverableStatus.InProgress)
+                            {
+                                <button class="btn btn-primary btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.Completed)">
+                                    <i class="fas fa-check me-2"></i>Mark Complete
+                                </button>
+                                <button class="btn btn-warning btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.OnHold)">
+                                    <i class="fas fa-pause me-2"></i>Put On Hold
+                                </button>
+                            }
+                            else if (deliverable.Status == DeliverableStatus.OnHold)
+                            {
+                                <button class="btn btn-success btn-sm" @onclick="() => UpdateStatus(DeliverableStatus.InProgress)">
+                                    <i class="fas fa-play me-2"></i>Resume Work
+                                </button>
+                            }
+                        </div>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<SfToast @ref="toastObj" Title="Success" CssClass="e-toast-success" Timeout="3000" ShowProgressBar="false"></SfToast>
+<SfToast @ref="errorToastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DeliverableDto? deliverable;
+    private SfToast? toastObj;
+    private SfToast? errorToastObj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDeliverable();
+    }
+
+    private async Task LoadDeliverable()
+    {
+        try
+        {
+            deliverable = await DeliverableService.GetByIdAsync(Id);
+            if (deliverable == null)
+            {
+                Navigation.NavigateTo("/deliverables");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error loading deliverable: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateStatus(DeliverableStatus newStatus)
+    {
+        if (deliverable == null) return;
+
+        try
+        {
+            var updateCommand = new ProjeX.Application.Deliverable.Commands.UpdateDeliverableCommand
+            {
+                Id = deliverable.Id,
+                Title = deliverable.Title,
+                Description = deliverable.Description,
+                ProjectId = deliverable.ProjectId,
+                DueDate = deliverable.DueDate,
+                Status = newStatus
+            };
+
+            await DeliverableService.UpdateAsync(updateCommand);
+            await LoadDeliverable(); // Reload to get updated data
+            
+            await ShowSuccessAsync($"Status updated to {newStatus}");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error updating status: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(DeliverableStatus status)
+    {
+        return status switch
+        {
+            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.InProgress => "bg-primary",
+            DeliverableStatus.Completed => "bg-success",
+            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task ShowSuccessAsync(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = message });
+        }
+    }
+
+    private async Task ShowErrorAsync(string message)
+    {
+        if (errorToastObj != null)
+        {
+            await errorToastObj.ShowAsync(new ToastModel { Content = message });
+        }
+    }
+}
+

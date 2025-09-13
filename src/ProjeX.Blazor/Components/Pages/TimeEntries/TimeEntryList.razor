@@ -1,6 +1,6 @@
 @page "/time-entries"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.TimeEntry
+@using ProjeX.Application.TimeEntry
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Popups
 @attribute [Authorize]
@@ -119,7 +119,7 @@ else
         }
     }
 
-    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Enums.TimeEntryStatus? status)
+    private string GetStatusBadgeClass(ProjeX.Domain.Enums.TimeEntryStatus? status)
     {
         return status?.ToString() switch
         {

@@ -1,9 +1,9 @@
 @page "/clients/create"
 @page "/clients/edit/{id:guid}"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Client
-@using LastMinute.Consultancy.Application.Client.Commands
-@using LastMinute.Consultancy.Domain.Enums
+@using ProjeX.Application.Client
+@using ProjeX.Application.Client.Commands
+@using ProjeX.Domain.Enums
 @using System.ComponentModel.DataAnnotations
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IClientService ClientService

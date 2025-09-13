@@ -1,0 +1,400 @@
+@page "/"
+@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Project
+@using ProjeX.Application.Client
+@using ProjeX.Application.Employee
+@using ProjeX.Application.TimeEntry
+@using ProjeX.Application.Deliverable
+@using ProjeX.Application.Overhead
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Charts
+@using Syncfusion.Blazor.Grids
+@attribute [Authorize]
+@inject IProjectService ProjectService
+@inject IClientService ClientService
+@inject IEmployeeService EmployeeService
+@inject ITimeEntryService TimeEntryService
+@inject IDeliverableService DeliverableService
+@inject IOverheadService OverheadService
+
+<PageTitle>Dashboard - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Dashboard</h1>
+    <div class="text-muted">
+        <i class="fas fa-calendar me-2"></i>@DateTime.Now.ToString("MMMM dd, yyyy")
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading dashboard...</span>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Key Metrics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Active Projects</h6>
+                            <h3 class="mb-0">@activeProjectsCount</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-briefcase fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Total Clients</h6>
+                            <h3 class="mb-0">@totalClientsCount</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-building fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Team Members</h6>
+                            <h3 class="mb-0">@totalEmployeesCount</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Hours This Month</h6>
+                            <h3 class="mb-0">@monthlyHours.ToString("F1")</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Project Status Chart -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Project Status Distribution</h6>
+                </div>
+                <div class="card-body">
+                    @if (projectStatusData.Any())
+                    {
+                        <SfChart Title="Projects by Status" Height="300px">
+                            <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category"></ChartPrimaryXAxis>
+                            <ChartSeriesCollection>
+                                <ChartSeries DataSource="@projectStatusData" XName="Status" YName="Count" Type="ChartSeriesType.Column">
+                                    <ChartMarker>
+                                        <ChartDataLabel Visible="true"></ChartDataLabel>
+                                    </ChartMarker>
+                                </ChartSeries>
+                            </ChartSeriesCollection>
+                        </SfChart>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">No project data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Deliverable Status -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Deliverable Status</h6>
+                </div>
+                <div class="card-body">
+                    @if (deliverableStatusData.Any())
+                    {
+                        <SfChart Title="Deliverables by Status" Height="300px">
+                            <ChartSeriesCollection>
+                                <ChartSeries DataSource="@deliverableStatusData" XName="Status" YName="Count" Type="ChartSeriesType.Pie">
+                                    <ChartMarker>
+                                        <ChartDataLabel Visible="true" Name="Status"></ChartDataLabel>
+                                    </ChartMarker>
+                                </ChartSeries>
+                            </ChartSeriesCollection>
+                        </SfChart>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">No deliverable data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Recent Projects -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">Recent Projects</h6>
+                    <a href="/projects" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (recentProjects.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var project in recentProjects.Take(5))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">@project.Name</h6>
+                                        <small class="text-muted">@project.ClientName</small>
+                                    </div>
+                                    <span class="badge @GetProjectStatusBadgeClass(project.Status)">@project.Status</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No recent projects</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Deliverables -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">Upcoming Deliverables</h6>
+                    <a href="/deliverables" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (upcomingDeliverables.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var deliverable in upcomingDeliverables.Take(5))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">@deliverable.Title</h6>
+                                        <small class="text-muted">Due: @deliverable.DueDate.ToString("MMM dd, yyyy")</small>
+                                    </div>
+                                    <span class="badge @GetDeliverableStatusBadgeClass(deliverable.Status)">@deliverable.Status</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No upcoming deliverables</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Overview -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Monthly Overview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">@monthlyHours.ToString("F1")</h4>
+                                <small class="text-muted">Hours Logged</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">@monthlyOverheads.ToString("C2")</h4>
+                                <small class="text-muted">Overheads</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">@completedDeliverablesThisMonth</h4>
+                                <small class="text-muted">Deliverables Completed</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">@newProjectsThisMonth</h4>
+                                <small class="text-muted">New Projects</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    
+    // Metrics
+    private int activeProjectsCount = 0;
+    private int totalClientsCount = 0;
+    private int totalEmployeesCount = 0;
+    private decimal monthlyHours = 0;
+    private decimal monthlyOverheads = 0;
+    private int completedDeliverablesThisMonth = 0;
+    private int newProjectsThisMonth = 0;
+
+    // Data for charts
+    private List<ChartData> projectStatusData = new();
+    private List<ChartData> deliverableStatusData = new();
+
+    // Recent data
+    private List<ProjectDto> recentProjects = new();
+    private List<DeliverableDto> upcomingDeliverables = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+        isLoading = false;
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Load all data in parallel
+            var projectsTask = ProjectService.GetAllAsync();
+            var clientsTask = ClientService.GetAllAsync();
+            var employeesTask = EmployeeService.GetAllAsync();
+            var timeEntriesTask = TimeEntryService.GetAllAsync();
+            var deliverablesTask = DeliverableService.GetAllAsync();
+            var overheadsTask = OverheadService.GetAllAsync();
+
+            await Task.WhenAll(projectsTask, clientsTask, employeesTask, timeEntriesTask, deliverablesTask, overheadsTask);
+
+            var projects = await projectsTask;
+            var clients = await clientsTask;
+            var employees = await employeesTask;
+            var timeEntries = await timeEntriesTask;
+            var deliverables = await deliverablesTask;
+            var overheads = await overheadsTask;
+
+            // Calculate metrics
+            activeProjectsCount = projects.Count(p => p.Status == ProjectStatus.Active);
+            totalClientsCount = clients.Count(c => c.Status == ClientStatus.Active);
+            totalEmployeesCount = employees.Count();
+
+            var currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+
+            monthlyHours = timeEntries
+                .Where(te => te.Date.Month == currentMonth && te.Date.Year == currentYear)
+                .Sum(te => (decimal)te.Hours);
+
+            monthlyOverheads = overheads
+                .Where(o => o.Date.Month == currentMonth && o.Date.Year == currentYear)
+                .Sum(o => o.Amount);
+
+            completedDeliverablesThisMonth = deliverables
+                .Count(d => d.Status == DeliverableStatus.Completed && 
+                           d.ModifiedAt?.Month == currentMonth && 
+                           d.ModifiedAt?.Year == currentYear);
+
+            newProjectsThisMonth = projects
+                .Count(p => p.CreatedAt.Month == currentMonth && p.CreatedAt.Year == currentYear);
+
+            // Prepare chart data
+            projectStatusData = Enum.GetValues<ProjectStatus>()
+                .Select(status => new ChartData 
+                { 
+                    Status = status.ToString(), 
+                    Count = projects.Count(p => p.Status == status) 
+                })
+                .Where(data => data.Count > 0)
+                .ToList();
+
+            deliverableStatusData = Enum.GetValues<DeliverableStatus>()
+                .Select(status => new ChartData 
+                { 
+                    Status = status.ToString(), 
+                    Count = deliverables.Count(d => d.Status == status) 
+                })
+                .Where(data => data.Count > 0)
+                .ToList();
+
+            // Recent data
+            recentProjects = projects.OrderByDescending(p => p.CreatedAt).ToList();
+            upcomingDeliverables = deliverables
+                .Where(d => d.DueDate >= DateTime.Today && d.Status != DeliverableStatus.Completed)
+                .OrderBy(d => d.DueDate)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show a toast notification
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+
+    private string GetProjectStatusBadgeClass(ProjectStatus status)
+    {
+        return status switch
+        {
+            ProjectStatus.Active => "bg-success",
+            ProjectStatus.OnHold => "bg-warning",
+            ProjectStatus.Completed => "bg-primary",
+            ProjectStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetDeliverableStatusBadgeClass(DeliverableStatus status)
+    {
+        return status switch
+        {
+            DeliverableStatus.NotStarted => "bg-secondary",
+            DeliverableStatus.InProgress => "bg-primary",
+            DeliverableStatus.Completed => "bg-success",
+            DeliverableStatus.OnHold => "bg-warning",
+            DeliverableStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    public class ChartData
+    {
+        public string Status { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
+}
+

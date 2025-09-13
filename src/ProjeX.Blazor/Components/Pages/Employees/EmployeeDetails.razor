@@ -1,6 +1,6 @@
 @page "/employees/details/{id:guid}"
 @using Microsoft.AspNetCore.Authorization
-@using LastMinute.Consultancy.Application.Employee
+@using ProjeX.Application.Employee
 @attribute [Authorize]
 @inject IEmployeeService EmployeeService
 @inject NavigationManager Navigation
@@ -220,7 +220,7 @@ else
         }
     }
 
-    private string GetStatusBadgeClass(LastMinute.Consultancy.Domain.Entities.EmployeeStatus status)
+    private string GetStatusBadgeClass(ProjeX.Domain.Entities.EmployeeStatus status)
     {
         return status.ToString() switch
         {

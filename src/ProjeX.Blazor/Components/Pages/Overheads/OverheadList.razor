@@ -1,6 +1,13 @@
 @page "/overheads"
 @using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Overhead
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Notifications
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IOverheadService OverheadService
+@inject NavigationManager Navigation
 
 <PageTitle>Overheads - ProjeX</PageTitle>
 
@@ -11,10 +18,170 @@
     </a>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <p class="text-muted">Overhead management functionality will be implemented here.</p>
-        <p>This page will show company overheads and operational costs.</p>
+@if (overheads == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
-</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@overheads" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10">
+                <GridPageSettings PageSize="10"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(OverheadDto.Description) HeaderText="Description" Width="250"></GridColumn>
+                    <GridColumn Field=@nameof(OverheadDto.Amount) HeaderText="Amount" Width="120" Format="C2"></GridColumn>
+                    <GridColumn Field=@nameof(OverheadDto.Date) HeaderText="Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(OverheadDto.Category) HeaderText="Category" Width="150">
+                        <Template>
+                            @{
+                                var overhead = (context as OverheadDto);
+                                var badgeClass = GetCategoryBadgeClass(overhead?.Category ?? OverheadCategory.General);
+                            }
+                            <span class="badge @badgeClass">@overhead?.Category</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(OverheadDto.ProjectName) HeaderText="Project" Width="180"></GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var overhead = (context as OverheadDto);
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <a href="/overheads/details/@overhead?.Id" class="btn btn-outline-info" title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="/overheads/edit/@overhead?.Id" class="btn btn-outline-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(overhead!)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Total Overheads</h6>
+                    <h3 class="text-primary">@overheads.Sum(o => o.Amount).ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">This Month</h6>
+                    <h3 class="text-success">@overheads.Where(o => o.Date.Month == DateTime.Now.Month && o.Date.Year == DateTime.Now.Year).Sum(o => o.Amount).ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete this overhead entry?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+<SfToast @ref="toastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    private List<OverheadDto>? overheads;
+    private bool showDeleteDialog = false;
+    private OverheadDto? selectedOverhead;
+    private SfToast? toastObj;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOverheads();
+    }
+
+    private async Task LoadOverheads()
+    {
+        try
+        {
+            overheads = await OverheadService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading overheads: {ex.Message}";
+            await ShowErrorAsync();
+        }
+    }
+
+    private void ShowDeleteConfirmation(OverheadDto overhead)
+    {
+        selectedOverhead = overhead;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedOverhead = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedOverhead != null)
+        {
+            try
+            {
+                await OverheadService.DeleteAsync(selectedOverhead.Id);
+                await LoadOverheads();
+                showDeleteDialog = false;
+                selectedOverhead = null;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting overhead: {ex.Message}";
+                await ShowErrorAsync();
+            }
+        }
+    }
+
+    private async Task ShowErrorAsync()
+    {
+        if (toastObj != null && !string.IsNullOrEmpty(errorMessage))
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = errorMessage });
+        }
+    }
+
+    private string GetCategoryBadgeClass(OverheadCategory category)
+    {
+        return category switch
+        {
+            OverheadCategory.General => "bg-secondary",
+            OverheadCategory.Travel => "bg-primary",
+            OverheadCategory.Equipment => "bg-info",
+            OverheadCategory.Software => "bg-success",
+            OverheadCategory.Training => "bg-warning",
+            OverheadCategory.Marketing => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
 

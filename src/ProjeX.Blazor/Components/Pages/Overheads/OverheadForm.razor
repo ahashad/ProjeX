@@ -1,0 +1,234 @@
+@page "/overheads/create"
+@page "/overheads/edit/{Id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Overhead
+@using ProjeX.Application.Overhead.Commands
+@using ProjeX.Application.Project
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.Notifications
+@attribute [Authorize(Policy = "ManagerOrAdmin")]
+@inject IOverheadService OverheadService
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Edit" : "Create") Overhead - ProjeX</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@(IsEdit ? "Edit" : "Create") Overhead</h1>
+    <a href="/overheads" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="@command" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger mb-3" />
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <InputTextArea id="description" class="form-control" rows="3" @bind-Value="command.Description" />
+                        <ValidationMessage For="@(() => command.Description)" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                                <SfNumericTextBox TValue="decimal" @bind-Value="command.Amount" 
+                                                 Format="C2" 
+                                                 CssClass="form-control"
+                                                 Placeholder="Enter amount">
+                                </SfNumericTextBox>
+                                <ValidationMessage For="@(() => command.Amount)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
+                                <SfDatePicker TValue="DateTime" @bind-Value="command.Date" CssClass="form-control"></SfDatePicker>
+                                <ValidationMessage For="@(() => command.Date)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                                <SfDropDownList TValue="OverheadCategory" TItem="CategoryOption" 
+                                               DataSource="@categoryOptions" 
+                                               @bind-Value="command.Category"
+                                               CssClass="form-control">
+                                    <DropDownListFieldSettings Value="Value" Text="Text"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                                <ValidationMessage For="@(() => command.Category)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="project" class="form-label">Project <span class="text-danger">*</span></label>
+                                <SfDropDownList TValue="Guid" TItem="ProjectDto" 
+                                               DataSource="@projects" 
+                                               @bind-Value="command.ProjectId"
+                                               Placeholder="Select a project"
+                                               CssClass="form-control">
+                                    <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                                <ValidationMessage For="@(() => command.ProjectId)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="fas fa-save me-2"></i>@(IsEdit ? "Update" : "Create")
+                        </button>
+                        <a href="/overheads" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<SfToast @ref="toastObj" Title="Error" CssClass="e-toast-danger" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEdit => Id.HasValue;
+    private CreateOverheadCommand command = new();
+    private UpdateOverheadCommand updateCommand = new();
+    private List<ProjectDto> projects = new();
+    private List<CategoryOption> categoryOptions = new();
+    private bool isSubmitting = false;
+    private SfToast? toastObj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+        LoadCategoryOptions();
+
+        if (IsEdit && Id.HasValue)
+        {
+            await LoadOverhead(Id.Value);
+        }
+        else
+        {
+            command.Date = DateTime.Today;
+            command.Category = OverheadCategory.General;
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            projects = await ProjectService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error loading projects: {ex.Message}");
+        }
+    }
+
+    private void LoadCategoryOptions()
+    {
+        categoryOptions = Enum.GetValues<OverheadCategory>()
+            .Select(c => new CategoryOption { Value = c, Text = c.ToString() })
+            .ToList();
+    }
+
+    private async Task LoadOverhead(Guid id)
+    {
+        try
+        {
+            var overhead = await OverheadService.GetByIdAsync(id);
+            if (overhead != null)
+            {
+                updateCommand = new UpdateOverheadCommand
+                {
+                    Id = overhead.Id,
+                    Description = overhead.Description,
+                    Amount = overhead.Amount,
+                    Date = overhead.Date,
+                    Category = overhead.Category,
+                    ProjectId = overhead.ProjectId
+                };
+
+                // Copy to command for form binding
+                command.Description = overhead.Description;
+                command.Amount = overhead.Amount;
+                command.Date = overhead.Date;
+                command.Category = overhead.Category;
+                command.ProjectId = overhead.ProjectId;
+            }
+            else
+            {
+                Navigation.NavigateTo("/overheads");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error loading overhead: {ex.Message}");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsEdit)
+            {
+                updateCommand.Description = command.Description;
+                updateCommand.Amount = command.Amount;
+                updateCommand.Date = command.Date;
+                updateCommand.Category = command.Category;
+                updateCommand.ProjectId = command.ProjectId;
+
+                await OverheadService.UpdateAsync(updateCommand);
+            }
+            else
+            {
+                await OverheadService.CreateAsync(command);
+            }
+
+            Navigation.NavigateTo("/overheads");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"Error {(IsEdit ? "updating" : "creating")} overhead: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task ShowErrorAsync(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel { Content = message });
+        }
+    }
+
+    private class CategoryOption
+    {
+        public OverheadCategory Value { get; set; }
+        public string Text { get; set; } = string.Empty;
+    }
+}
+

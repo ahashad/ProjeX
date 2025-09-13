@@ -1,5 +1,4 @@
 using AutoMapper;
-using ProjeX.Application.ActualAssignment.Commands;
 using ProjeX.Application.Employee;
 using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +17,12 @@ namespace ProjeX.Application.ActualAssignment
             _mapper = mapper;
         }
 
-        public async Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId)
+        public async Task<AssignmentCreationResult> CreateAsync(CreateAssignmentRequest request, string userId)
         {
             var result = new AssignmentCreationResult();
             
             // Perform comprehensive pre-checks
-            var preCheckResult = await PerformPreChecksAsync(command);
+            var preCheckResult = await PerformPreChecksAsync(request);
             result.Warnings.AddRange(preCheckResult.Warnings);
             
             if (preCheckResult.HasBlockers)
@@ -34,7 +33,7 @@ namespace ProjeX.Application.ActualAssignment
             }
 
             // Create assignment with validation results
-            var assignment = _mapper.Map<Domain.Entities.ActualAssignment>(command);
+            var assignment = _mapper.Map<Domain.Entities.ActualAssignment>(request);
             assignment.Id = Guid.NewGuid();
             assignment.RequestedByUserId = userId;
             assignment.Status = AssignmentStatus.Planned;
@@ -61,24 +60,94 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        private async Task<AssignmentPreCheckResult> PerformPreChecksAsync(CreateActualAssignmentCommand command)
+        public async Task<AssignmentDto> UpdateAsync(UpdateAssignmentRequest request)
+        {
+            var assignment = await _context.ActualAssignments.FindAsync(request.Id);
+            if (assignment == null)
+                throw new ArgumentException("Assignment not found");
+
+            _mapper.Map(request, assignment);
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(assignment.Id) ?? throw new InvalidOperationException("Failed to retrieve updated assignment");
+        }
+
+        public async Task<bool> ApproveAsync(AssignmentApprovalRequest request, string approvedById)
+        {
+            var assignment = await _context.ActualAssignments.FindAsync(request.AssignmentId);
+            if (assignment == null)
+                return false;
+
+            if (request.IsApproved)
+            {
+                assignment.Status = AssignmentStatus.Active;
+                assignment.ApprovedById = approvedById;
+                assignment.ApprovedAt = DateTime.UtcNow;
+                assignment.ApprovalNotes = request.ApprovalNotes;
+            }
+            else
+            {
+                assignment.Status = AssignmentStatus.Rejected;
+                assignment.ApprovalNotes = request.ApprovalNotes;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<AssignmentDto?> GetByIdAsync(Guid id)
+        {
+            var assignment = await _context.ActualAssignments
+                .Include(a => a.Project)
+                .Include(a => a.PlannedTeamSlot)
+                .Include(a => a.Employee)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            return assignment != null ? _mapper.Map<AssignmentDto>(assignment) : null;
+        }
+
+        public async Task<IEnumerable<AssignmentDto>> GetByProjectIdAsync(Guid projectId)
+        {
+            var assignments = await _context.ActualAssignments
+                .Include(a => a.Project)
+                .Include(a => a.PlannedTeamSlot)
+                .Include(a => a.Employee)
+                .Where(a => a.ProjectId == projectId)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<AssignmentDto>>(assignments);
+        }
+
+        public async Task<IEnumerable<AssignmentDto>> GetPendingApprovalsAsync()
+        {
+            var assignments = await _context.ActualAssignments
+                .Include(a => a.Project)
+                .Include(a => a.PlannedTeamSlot)
+                .Include(a => a.Employee)
+                .Where(a => a.RequiresApproval && a.Status == AssignmentStatus.Planned)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<AssignmentDto>>(assignments);
+        }
+
+        private async Task<AssignmentPreCheckResult> PerformPreChecksAsync(CreateAssignmentRequest request)
         {
             var result = new AssignmentPreCheckResult();
             
             // 1. Validate basic constraints
-            await ValidateBasicConstraintsAsync(command, result);
+            await ValidateBasicConstraintsAsync(request, result);
             
             // 2. Check capacity constraints
-            await CheckCapacityConstraintsAsync(command, result);
+            await CheckCapacityConstraintsAsync(request, result);
             
             // 3. Check utilization constraints
-            await CheckUtilizationConstraintsAsync(command, result);
+            await CheckUtilizationConstraintsAsync(request, result);
             
             // 4. Check role fit
-            await CheckRoleFitAsync(command, result);
+            await CheckRoleFitAsync(request, result);
             
             // 5. Check cost variance
-            await CheckCostVarianceAsync(command, result);
+            await CheckCostVarianceAsync(request, result);
             
             // Determine if approval is required
             result.RequiresApproval = result.HasCostVariance || result.HasUtilizationWarning || result.HasRoleMismatch;
@@ -86,32 +155,32 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        private async Task ValidateBasicConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        private async Task ValidateBasicConstraintsAsync(CreateAssignmentRequest request, AssignmentPreCheckResult result)
         {
             // Validate project exists and dates
-            var project = await _context.Projects.FindAsync(command.ProjectId);
+            var project = await _context.Projects.FindAsync(request.ProjectId);
             if (project == null)
             {
                 result.Blockers.Add("Project not found");
                 return;
             }
 
-            var endDate = command.EndDate ?? project.EndDate;
+            var endDate = request.EndDate ?? project.EndDate;
             
-            if (command.StartDate < project.StartDate || endDate > project.EndDate)
+            if (request.StartDate < project.StartDate || endDate > project.EndDate)
             {
                 result.Blockers.Add("Assignment dates must be within project window");
             }
             
-            if (command.StartDate >= endDate)
+            if (request.StartDate >= endDate)
             {
                 result.Blockers.Add("Start date must be before end date");
             }
 
             // Validate assignee exists
-            if (command.AssigneeType == AssigneeType.Employee && command.EmployeeId.HasValue)
+            if (request.AssigneeType == AssigneeType.Employee && request.EmployeeId.HasValue)
             {
-                var employee = await _context.Employees.FindAsync(command.EmployeeId.Value);
+                var employee = await _context.Employees.FindAsync(request.EmployeeId.Value);
                 if (employee == null)
                 {
                     result.Blockers.Add("Employee not found");
@@ -119,40 +188,40 @@ namespace ProjeX.Application.ActualAssignment
             }
         }
 
-        private async Task CheckCapacityConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        private async Task CheckCapacityConstraintsAsync(CreateAssignmentRequest request, AssignmentPreCheckResult result)
         {
-            if (!command.PlannedTeamSlotId.HasValue) return;
+            if (!request.PlannedTeamSlotId.HasValue) return;
 
-            var slot = await _context.PlannedTeamSlots.FindAsync(command.PlannedTeamSlotId.Value);
+            var slot = await _context.PlannedTeamSlots.FindAsync(request.PlannedTeamSlotId.Value);
             if (slot == null) return;
 
             // Check if total allocation for this slot exceeds allowed allocation
             var existingAllocations = await _context.ActualAssignments
-                .Where(a => a.PlannedTeamSlotId == command.PlannedTeamSlotId.Value &&
+                .Where(a => a.PlannedTeamSlotId == request.PlannedTeamSlotId.Value &&
                            a.Status != AssignmentStatus.Cancelled &&
-                           a.StartDate < (command.EndDate ?? DateTime.MaxValue) &&
-                           (a.EndDate == null || a.EndDate > command.StartDate))
+                           a.StartDate < (request.EndDate ?? DateTime.MaxValue) &&
+                           (a.EndDate == null || a.EndDate > request.StartDate))
                 .SumAsync(a => a.AllocationPercent);
 
-            if (existingAllocations + command.AllocationPercent > slot.AllocationPercent)
+            if (existingAllocations + request.AllocationPercent > slot.AllocationPercent)
             {
-                result.Blockers.Add($"Total allocation ({existingAllocations + command.AllocationPercent}%) would exceed slot capacity ({slot.AllocationPercent}%)");
+                result.Blockers.Add($"Total allocation ({existingAllocations + request.AllocationPercent}%) would exceed slot capacity ({slot.AllocationPercent}%)");
             }
         }
 
-        private async Task CheckUtilizationConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        private async Task CheckUtilizationConstraintsAsync(CreateAssignmentRequest request, AssignmentPreCheckResult result)
         {
-            if (!command.EmployeeId.HasValue) return;
+            if (!request.EmployeeId.HasValue) return;
 
             // Check employee utilization across all projects
             var overlappingAssignments = await _context.ActualAssignments
-                .Where(a => a.EmployeeId == command.EmployeeId.Value &&
+                .Where(a => a.EmployeeId == request.EmployeeId.Value &&
                            a.Status == AssignmentStatus.Active &&
-                           a.StartDate < (command.EndDate ?? DateTime.MaxValue) &&
-                           (a.EndDate == null || a.EndDate > command.StartDate))
+                           a.StartDate < (request.EndDate ?? DateTime.MaxValue) &&
+                           (a.EndDate == null || a.EndDate > request.StartDate))
                 .SumAsync(a => a.AllocationPercent);
 
-            var totalUtilization = overlappingAssignments + command.AllocationPercent;
+            var totalUtilization = overlappingAssignments + request.AllocationPercent;
             
             if (totalUtilization > 100)
             {
@@ -161,17 +230,17 @@ namespace ProjeX.Application.ActualAssignment
             }
         }
 
-        private async Task CheckRoleFitAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        private async Task CheckRoleFitAsync(CreateAssignmentRequest request, AssignmentPreCheckResult result)
         {
-            if (!command.EmployeeId.HasValue || !command.PlannedTeamSlotId.HasValue) return;
+            if (!request.EmployeeId.HasValue || !request.PlannedTeamSlotId.HasValue) return;
 
             var employee = await _context.Employees
                 .Include(e => e.Role)
-                .FirstOrDefaultAsync(e => e.Id == command.EmployeeId.Value);
+                .FirstOrDefaultAsync(e => e.Id == request.EmployeeId.Value);
                 
             var slot = await _context.PlannedTeamSlots
                 .Include(s => s.Role)
-                .FirstOrDefaultAsync(s => s.Id == command.PlannedTeamSlotId.Value);
+                .FirstOrDefaultAsync(s => s.Id == request.PlannedTeamSlotId.Value);
 
             if (employee?.RoleId != slot?.RoleId)
             {
@@ -180,12 +249,12 @@ namespace ProjeX.Application.ActualAssignment
             }
         }
 
-        private async Task CheckCostVarianceAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        private async Task CheckCostVarianceAsync(CreateAssignmentRequest request, AssignmentPreCheckResult result)
         {
-            if (!command.EmployeeId.HasValue || !command.PlannedTeamSlotId.HasValue) return;
+            if (!request.EmployeeId.HasValue || !request.PlannedTeamSlotId.HasValue) return;
 
-            var employee = await _context.Employees.FindAsync(command.EmployeeId.Value);
-            var slot = await _context.PlannedTeamSlots.FindAsync(command.PlannedTeamSlotId.Value);
+            var employee = await _context.Employees.FindAsync(request.EmployeeId.Value);
+            var slot = await _context.PlannedTeamSlots.FindAsync(request.PlannedTeamSlotId.Value);
 
             if (employee == null || slot == null) return;
 
@@ -206,9 +275,8 @@ namespace ProjeX.Application.ActualAssignment
                 }
             }
         }
-                .ThenInclude(pts => pts.Role)
-                .Include(a => a.Employee)
-                .FirstOrDefaultAsync(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&
+    }
+}
                                           (aa.Status == AssignmentStatus.Planned || aa.Status == AssignmentStatus.Active) &&
                                           !aa.IsDeleted &&
                                           aa.StartDate <= endDate &&

@@ -9,20 +9,25 @@ namespace ProjeX.Domain.Entities
         public Guid DeliverableId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public Guid? OwnerId { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public Guid? AssignedEmployeeId { get; set; }
+        public DateTime PlannedStartDate { get; set; }
+        public DateTime PlannedEndDate { get; set; }
+        public DateTime? ActualStartDate { get; set; }
+        public DateTime? ActualEndDate { get; set; }
         public TaskStatus Status { get; set; }
-        public decimal PercentComplete { get; set; }
-        public int RemainingDurationDays { get; set; }
-        public int EstimatedHours { get; set; }
-        public int ActualHours { get; set; }
+        public int ProgressPercentage { get; set; }
+        public decimal EstimatedHours { get; set; }
+        public decimal ActualHours { get; set; }
+        public bool IsMilestone { get; set; }
+        public int Priority { get; set; } = 3;
         public string Notes { get; set; } = string.Empty;
-        public string Dependencies { get; set; } = string.Empty;
 
         // Navigation properties
         public virtual Deliverable Deliverable { get; set; } = null!;
-        public virtual Employee? Owner { get; set; }
+        public virtual Employee? AssignedEmployee { get; set; }
+        public virtual ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
+        public virtual ICollection<TaskDependency> DependentOn { get; set; } = new List<TaskDependency>();
+        public virtual ICollection<Approval> Approvals { get; set; } = new List<Approval>();
     }
 }
 

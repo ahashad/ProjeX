@@ -121,9 +121,9 @@ namespace ProjeX.Infrastructure.Services
                         DefaultSalary = 8000m,
                         DefaultMonthlyIncentive = 1500m,
                         CommissionPercent = 5.0m,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     },
                     new RolesCatalog 
                     { 
@@ -133,9 +133,9 @@ namespace ProjeX.Infrastructure.Services
                         DefaultSalary = 6000m,
                         DefaultMonthlyIncentive = 1000m,
                         CommissionPercent = 3.0m,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     },
                     new RolesCatalog 
                     { 
@@ -145,9 +145,9 @@ namespace ProjeX.Infrastructure.Services
                         DefaultSalary = 4000m,
                         DefaultMonthlyIncentive = 500m,
                         CommissionPercent = 2.0m,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     },
                     new RolesCatalog 
                     { 
@@ -157,9 +157,9 @@ namespace ProjeX.Infrastructure.Services
                         DefaultSalary = 9000m,
                         DefaultMonthlyIncentive = 2000m,
                         CommissionPercent = 6.0m,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     },
                     new RolesCatalog 
                     { 
@@ -169,9 +169,9 @@ namespace ProjeX.Infrastructure.Services
                         DefaultSalary = 7000m,
                         DefaultMonthlyIncentive = 1200m,
                         CommissionPercent = 4.0m,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     }
                 };
 
@@ -196,9 +196,9 @@ namespace ProjeX.Infrastructure.Services
                         Phone = "+1-555-0101",
                         Address = "123 Demo Street, Demo City, DC 12345",
                         Status = ClientStatus.Active,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     },
                     new Client
                     {
@@ -209,9 +209,9 @@ namespace ProjeX.Infrastructure.Services
                         Phone = "+1-555-0102",
                         Address = "456 Sample Avenue, Sample Town, ST 67890",
                         Status = ClientStatus.Active,
-                        CreatedBy = "System",
+                        CreatedBy = Guid.Empty,
                         CreatedAt = DateTime.UtcNow,
-                        ModifiedBy = "System"
+                        ModifiedBy = Guid.Empty
                     }
                 };
 

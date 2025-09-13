@@ -211,7 +211,7 @@ namespace ProjeX.Infrastructure.Data
             builder.Entity<ChangeRequest>().Property(cr => cr.ActualCost).HasColumnType("decimal(18,2)");
             builder.Entity<ChangeRequest>().Property(cr => cr.ActualHours).HasColumnType("decimal(8,2)");
             builder.Entity<ChangeRequest>().Property(cr => cr.RequestNumber).HasMaxLength(50).IsRequired();
-            builder.Entity<ChangeRequest>().Property(cr => cr.RequestedBy).HasMaxLength(256).IsRequired();
+            builder.Entity<ChangeRequest>().Property(cr => cr.RequestedBy).IsRequired();
             builder.Entity<ChangeRequest>().Property(cr => cr.ReviewComments).HasColumnType("TEXT");
             builder.Entity<ChangeRequest>().Property(cr => cr.ApprovalComments).HasColumnType("TEXT");
             builder.Entity<ChangeRequest>().HasOne(cr => cr.Project).WithMany().HasForeignKey(cr => cr.ProjectId).OnDelete(DeleteBehavior.Restrict);

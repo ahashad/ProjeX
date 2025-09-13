@@ -5,9 +5,9 @@ namespace ProjeX.Domain.Common
     public abstract class AuditableEntity
     {
         public Guid Id { get; set; }
-        public string CreatedBy { get; set; } = string.Empty;
+        public Guid CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string ModifiedBy { get; set; } = string.Empty;
+        public Guid ModifiedBy { get; set; }
         public DateTime? ModifiedAt { get; set; }
         public bool IsDeleted { get; set; }
         public byte[]? RowVersion { get; set; }

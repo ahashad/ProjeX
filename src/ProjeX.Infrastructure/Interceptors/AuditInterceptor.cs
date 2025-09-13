@@ -51,17 +51,19 @@ namespace ProjeX.Infrastructure.Interceptors
             }
         }
 
-        private string GetCurrentUser()
+        private Guid GetCurrentUser()
         {
             var user = _httpContextAccessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated == true)
             {
-                return user.FindFirst(ClaimTypes.Name)?.Value 
-                    ?? user.FindFirst(ClaimTypes.Email)?.Value 
-                    ?? user.Identity.Name 
-                    ?? "System";
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userId, out var result))
+                {
+                    return result;
+                }
+                return Guid.Empty;
             }
-            return "System";
+            return Guid.Empty;
         }
     }
 }

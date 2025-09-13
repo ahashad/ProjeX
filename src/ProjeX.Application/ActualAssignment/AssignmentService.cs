@@ -20,34 +20,192 @@ namespace ProjeX.Application.ActualAssignment
 
         public async Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId)
         {
-            // Validate PlannedTeamSlot exists and get details
-            var plannedTeamSlot = await _context.PlannedTeamSlots
-                .Include(pts => pts.Project)
-                .Include(pts => pts.Role)
-                .FirstOrDefaultAsync(pts => pts.Id == command.PlannedTeamSlotId && !pts.IsDeleted);
-
-            if (plannedTeamSlot == null)
+            var result = new AssignmentCreationResult();
+            
+            // Perform comprehensive pre-checks
+            var preCheckResult = await PerformPreChecksAsync(command);
+            result.Warnings.AddRange(preCheckResult.Warnings);
+            
+            if (preCheckResult.HasBlockers)
             {
-                throw new InvalidOperationException("Planned team slot not found");
+                result.IsSuccess = false;
+                result.Errors.AddRange(preCheckResult.Blockers);
+                return result;
             }
 
-            var endDate = command.EndDate ?? plannedTeamSlot.Project.EndDate;
-
-            // Validate date range within project
-            if (command.StartDate < plannedTeamSlot.Project.StartDate || endDate > plannedTeamSlot.Project.EndDate)
+            // Create assignment with validation results
+            var assignment = _mapper.Map<Domain.Entities.ActualAssignment>(command);
+            assignment.Id = Guid.NewGuid();
+            assignment.RequestedByUserId = userId;
+            assignment.Status = AssignmentStatus.Planned;
+            assignment.RequiresApproval = preCheckResult.RequiresApproval;
+            
+            // Set warning flags based on pre-checks
+            assignment.CostCheckWarning = preCheckResult.HasCostVariance;
+            assignment.UtilizationWarning = preCheckResult.HasUtilizationWarning;
+            assignment.RoleMismatchWarning = preCheckResult.HasRoleMismatch;
+            
+            if (preCheckResult.HasCostVariance)
             {
-                throw new InvalidOperationException("Assignment dates must be within project start and end dates");
+                assignment.CostDifferenceAmount = preCheckResult.CostVarianceAmount;
+                assignment.CostDifferencePercentage = preCheckResult.CostVariancePercentage;
             }
 
-            if (command.StartDate > endDate)
+            _context.ActualAssignments.Add(assignment);
+            await _context.SaveChangesAsync();
+
+            result.IsSuccess = true;
+            result.AssignmentId = assignment.Id;
+            result.Assignment = await GetByIdAsync(assignment.Id);
+            
+            return result;
+        }
+
+        private async Task<AssignmentPreCheckResult> PerformPreChecksAsync(CreateActualAssignmentCommand command)
+        {
+            var result = new AssignmentPreCheckResult();
+            
+            // 1. Validate basic constraints
+            await ValidateBasicConstraintsAsync(command, result);
+            
+            // 2. Check capacity constraints
+            await CheckCapacityConstraintsAsync(command, result);
+            
+            // 3. Check utilization constraints
+            await CheckUtilizationConstraintsAsync(command, result);
+            
+            // 4. Check role fit
+            await CheckRoleFitAsync(command, result);
+            
+            // 5. Check cost variance
+            await CheckCostVarianceAsync(command, result);
+            
+            // Determine if approval is required
+            result.RequiresApproval = result.HasCostVariance || result.HasUtilizationWarning || result.HasRoleMismatch;
+            
+            return result;
+        }
+
+        private async Task ValidateBasicConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        {
+            // Validate project exists and dates
+            var project = await _context.Projects.FindAsync(command.ProjectId);
+            if (project == null)
             {
-                throw new InvalidOperationException("Start date cannot be after end date");
+                result.Blockers.Add("Project not found");
+                return;
             }
 
-            // Check if slot has overlapping assignments
-            var overlappingAssignment = await _context.ActualAssignments
-                .Include(a => a.Project)
-                .Include(a => a.PlannedTeamSlot)
+            var endDate = command.EndDate ?? project.EndDate;
+            
+            if (command.StartDate < project.StartDate || endDate > project.EndDate)
+            {
+                result.Blockers.Add("Assignment dates must be within project window");
+            }
+            
+            if (command.StartDate >= endDate)
+            {
+                result.Blockers.Add("Start date must be before end date");
+            }
+
+            // Validate assignee exists
+            if (command.AssigneeType == AssigneeType.Employee && command.EmployeeId.HasValue)
+            {
+                var employee = await _context.Employees.FindAsync(command.EmployeeId.Value);
+                if (employee == null)
+                {
+                    result.Blockers.Add("Employee not found");
+                }
+            }
+        }
+
+        private async Task CheckCapacityConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        {
+            if (!command.PlannedTeamSlotId.HasValue) return;
+
+            var slot = await _context.PlannedTeamSlots.FindAsync(command.PlannedTeamSlotId.Value);
+            if (slot == null) return;
+
+            // Check if total allocation for this slot exceeds allowed allocation
+            var existingAllocations = await _context.ActualAssignments
+                .Where(a => a.PlannedTeamSlotId == command.PlannedTeamSlotId.Value &&
+                           a.Status != AssignmentStatus.Cancelled &&
+                           a.StartDate < (command.EndDate ?? DateTime.MaxValue) &&
+                           (a.EndDate == null || a.EndDate > command.StartDate))
+                .SumAsync(a => a.AllocationPercent);
+
+            if (existingAllocations + command.AllocationPercent > slot.AllocationPercent)
+            {
+                result.Blockers.Add($"Total allocation ({existingAllocations + command.AllocationPercent}%) would exceed slot capacity ({slot.AllocationPercent}%)");
+            }
+        }
+
+        private async Task CheckUtilizationConstraintsAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        {
+            if (!command.EmployeeId.HasValue) return;
+
+            // Check employee utilization across all projects
+            var overlappingAssignments = await _context.ActualAssignments
+                .Where(a => a.EmployeeId == command.EmployeeId.Value &&
+                           a.Status == AssignmentStatus.Active &&
+                           a.StartDate < (command.EndDate ?? DateTime.MaxValue) &&
+                           (a.EndDate == null || a.EndDate > command.StartDate))
+                .SumAsync(a => a.AllocationPercent);
+
+            var totalUtilization = overlappingAssignments + command.AllocationPercent;
+            
+            if (totalUtilization > 100)
+            {
+                result.HasUtilizationWarning = true;
+                result.Warnings.Add($"Employee utilization will be {totalUtilization}% (exceeds 100%)");
+            }
+        }
+
+        private async Task CheckRoleFitAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        {
+            if (!command.EmployeeId.HasValue || !command.PlannedTeamSlotId.HasValue) return;
+
+            var employee = await _context.Employees
+                .Include(e => e.Role)
+                .FirstOrDefaultAsync(e => e.Id == command.EmployeeId.Value);
+                
+            var slot = await _context.PlannedTeamSlots
+                .Include(s => s.Role)
+                .FirstOrDefaultAsync(s => s.Id == command.PlannedTeamSlotId.Value);
+
+            if (employee?.RoleId != slot?.RoleId)
+            {
+                result.HasRoleMismatch = true;
+                result.Warnings.Add($"Employee role ({employee?.Role?.Name}) doesn't match slot role ({slot?.Role?.Name})");
+            }
+        }
+
+        private async Task CheckCostVarianceAsync(CreateActualAssignmentCommand command, AssignmentPreCheckResult result)
+        {
+            if (!command.EmployeeId.HasValue || !command.PlannedTeamSlotId.HasValue) return;
+
+            var employee = await _context.Employees.FindAsync(command.EmployeeId.Value);
+            var slot = await _context.PlannedTeamSlots.FindAsync(command.PlannedTeamSlotId.Value);
+
+            if (employee == null || slot == null) return;
+
+            var plannedMonthlyCost = slot.PlannedMonthlyCost;
+            var actualMonthlyCost = employee.MonthlySalary; // Assuming this field exists
+
+            if (plannedMonthlyCost > 0)
+            {
+                var variance = actualMonthlyCost - plannedMonthlyCost;
+                var variancePercentage = (variance / plannedMonthlyCost) * 100;
+
+                if (Math.Abs(variancePercentage) > 10) // 10% threshold
+                {
+                    result.HasCostVariance = true;
+                    result.CostVarianceAmount = variance;
+                    result.CostVariancePercentage = variancePercentage;
+                    result.Warnings.Add($"Cost variance: {variancePercentage:F1}% ({variance:C})");
+                }
+            }
+        }
                 .ThenInclude(pts => pts.Role)
                 .Include(a => a.Employee)
                 .FirstOrDefaultAsync(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&

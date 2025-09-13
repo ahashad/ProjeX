@@ -1,67 +1,76 @@
-# ProjeX Blazor Migration Todo
+# ProjeX - New Features Implementation Todo
 
-## Phase 1: Analyze existing codebase and understand current architecture ✓
-- [x] Clone ProjeX repository
-- [x] Examine solution structure
-- [x] Review existing Blazor project setup
-- [x] Identify MVC controllers and views to migrate
+## Phase 1: Analyze Business Requirements and Create Detailed Implementation Plan ✅ COMPLETED
+- [x] Analyze `business_logic_workflow.md`
+- [x] Create `implementation_plan.md`
 
-## Phase 2: Clone and examine the ProjeX repository
-- [x] Analyze all MVC controllers functionality
-- [x] Review existing Blazor components
-- [x] Document missing components and features
-- [x] Understand data models and services
+## Phase 2: Implement Core Project Planning Enhancements ✅ COMPLETED
+- [x] **DB**: Add `Path` and `Budget` entities
+- [x] **Backend**: Create `PathService` and `BudgetService`
+- [x] **Backend**: Implement DTOs and validation
+- [x] **Frontend**: Create `PathComponent`
+- [x] **Frontend**: Create `BudgetComponent`
+- [x] **Frontend**: Integrate into navigation menu
 
-## Phase 3: Plan Blazor architecture and identify all required functionalities
-- [ ] Map MVC controllers to Blazor components
-- [ ] Plan component hierarchy and routing
-- [ ] Identify missing API endpoints
-- [ ] Plan authentication and authorization integration
+## Phase 3: Develop Team Assignment and Resource Management System 📋 PENDING
+- [ ] **DB**: Enhance `PlannedTeamSlot` and `ActualAssignment`
+- [ ] **Backend**: Enhance `AssignmentService` with pre-checks
+- [ ] **Backend**: Implement approval workflow
+- [ ] **Frontend**: Create `AssignmentComponent`
+- [ ] **Frontend**: Create resource management dashboard
 
-## Phase 4: Create new Blazor project structure with proper configuration
-- [ ] Update project references and dependencies
-- [ ] Configure routing and navigation
-- [ ] Set up proper service registration
+## Phase 4: Build Resource Utilization Tracking and Monitoring 📋 PENDING
+- [ ] **DB**: Create `CapacityProfile` and `UtilizationRecord` entities
+- [ ] **Backend**: Implement utilization calculation service
+- [ ] **Backend**: Create `UtilizationService`
+- [ ] **Frontend**: Create `UtilizationDashboard`
+- [ ] **Frontend**: Add utilization alerts
 
-## Phase 5: Rename all references from lastminute.consultancy to ProjeX ✓
-- [x] Update namespaces in all projects
-- [x] Update project references
-- [x] Update configuration files
-- [x] Update solution file
+## Phase 5: Enhance Deliverables Execution with Tasks and Milestones 📋 PENDING
+- [ ] **DB**: Create `Task` and `Approval` entities
+- [ ] **DB**: Add `IsMilestone` to `Deliverable`
+- [ ] **Backend**: Enhance `DeliverableService`
+- [ ] **Frontend**: Create `TaskComponent`
+- [ ] **Frontend**: Add approval workflow to `DeliverableDetails`
 
-## Phase 6: Implement core Blazor components and pages
-- [ ] Create missing page components
-- [ ] Implement CRUD operations for all entities
-- [ ] Add proper validation and error handling
+## Phase 6: Implement Invoicing Planning and Management System 📋 PENDING
+- [ ] **DB**: Create `InvoicePlan` and `BillingRule` entities
+- [ ] **DB**: Enhance `Invoice` entity
+- [ ] **Backend**: Create `InvoicePlanService` and `InvoiceManagementService`
+- [ ] **Backend**: Implement 3rd-party integration service
+- [ ] **Frontend**: Create `InvoicePlanComponent`
+- [ ] **Frontend**: Create `InvoiceManagementComponent`
 
-## Phase 7: Develop API controllers and services
-- [ ] Create API controllers for Blazor consumption
-- [ ] Implement proper error handling
-- [ ] Add logging and monitoring
+## Phase 7: Develop Vendor Management and Purchase Order System 📋 PENDING
+- [ ] **DB**: Create `Vendor`, `VendorContract`, `VendorInvoice` entities
+- [ ] **Backend**: Create `VendorService` and `VendorContractService`
+- [ ] **Backend**: Implement 3-way matching
+- [ ] **Frontend**: Create `VendorManagementComponent`
+- [ ] **Frontend**: Create `PurchaseOrderComponent`
 
-## Phase 8: Implement authentication and authorization
-- [ ] Complete Identity integration
-- [ ] Add role-based authorization
-- [ ] Implement proper security measures
+## Phase 8: Build Client CRM and Tenders Management 📋 PENDING
+- [ ] **DB**: Create `Account`, `Contact`, `Opportunity`, `Tender` entities
+- [ ] **Backend**: Create `CrmService` and `TenderService`
+- [ ] **Frontend**: Create `CrmDashboard`
+- [ ] **Frontend**: Create `TenderManagementComponent`
 
-## Phase 9: Add database integration and data models
-- [ ] Ensure all entities are properly mapped
-- [ ] Add missing database migrations
-- [ ] Test database operations
+## Phase 9: Implement Finance and Governance Controls 📋 PENDING
+- [ ] **Backend**: Enhance RBAC
+- [ ] **Backend**: Implement multi-level approvals
+- [ ] **Backend**: Add budget encumbrances and change orders
+- [ ] **Frontend**: Create `ApprovalsDashboard`
+- [ ] **Frontend**: Create `ChangeOrderComponent`
 
-## Phase 10: Implement missing features and complete functionality
-- [ ] Add reporting functionality
-- [ ] Implement file upload/download
-- [ ] Add real-time features if needed
+## Phase 10: Add Reporting and Analytics Dashboard 📋 PENDING
+- [ ] **Backend**: Enhance `ReportService` with new reports
+- [ ] **Frontend**: Create `ExecutiveDashboard`
+- [ ] **Frontend**: Add advanced charts
 
-## Phase 11: Test the complete application and fix issues
-- [ ] Test all CRUD operations
-- [ ] Test authentication and authorization
-- [ ] Test responsive design
-- [ ] Fix any bugs or issues
+## Phase 11: Test Complete System and Fix Issues 📋 PENDING
+- [ ] End-to-end testing
+- [ ] Bug fixing
 
-## Phase 12: Deliver completed ProjeX Blazor solution to user
-- [ ] Final testing and validation
-- [ ] Documentation update
-- [ ] Deployment preparation
+## Phase 12: Deliver Completed Enhanced ProjeX Solution 📋 PENDING
+- [ ] Update documentation
+- [ ] Package final solution
 

@@ -18,6 +18,8 @@ using ProjeX.Application.Invoice;
 using ProjeX.Application.ChangeRequest;
 using ProjeX.Application.Payment;
 using ProjeX.Application.Reports;
+using ProjeX.Application.Path;
+using ProjeX.Application.Budget;
 using ProjeX.Infrastructure.Services;
 using ProjeX.Infrastructure.Interceptors;
 using Syncfusion.Blazor;
@@ -87,7 +89,9 @@ builder.Services.AddAutoMapper(
     typeof(DeliverableProfile).Assembly,
     typeof(PaymentProfile).Assembly,
     typeof(InvoiceProfile).Assembly,
-    typeof(ChangeRequestProfile).Assembly);
+    typeof(ChangeRequestProfile).Assembly,
+    typeof(PathProfile).Assembly,
+    typeof(BudgetProfile).Assembly);
 
 // Register Application Services
 builder.Services.AddScoped<IPlannedTeamSlotService, PlannedTeamSlotService>();
@@ -103,6 +107,8 @@ builder.Services.AddScoped<IChangeRequestService, ChangeRequestService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IPathService, PathService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
 
 // Add authorization policies
 builder.Services.AddAuthorization(options =>

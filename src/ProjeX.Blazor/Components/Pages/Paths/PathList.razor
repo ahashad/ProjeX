@@ -8,10 +8,6 @@
 @inject IPathService PathService
 @inject IEmployeeService EmployeeService
 @inject IProjectService ProjectService
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@inject UserManager<ApplicationUser> UserManager
-@using Microsoft.AspNetCore.Components.Authorization
-@using ProjeX.Domain.Entities
 
 <PageTitle>Project Paths - ProjeX</PageTitle>
 
@@ -260,19 +256,9 @@
     private bool isLoading = false;
     private bool isSubmitting = false;
     private string selectedProjectId = string.Empty;
-    private string? currentUserId;
 
     protected override async System.Threading.Tasks.Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            var appUser = await UserManager.GetUserAsync(user);
-            currentUserId = appUser?.Id;
-        }
-
         await LoadProjects();
         await LoadEmployees();
         await LoadPaths();
@@ -385,11 +371,11 @@ if (isEdit)
    updateRequest.Notes = pathRequest.Notes;
     updateRequest.IsActive = pathRequest.IsActive;
            
-            await PathService.UpdateAsync(updateRequest, currentUserId);
+       await PathService.UpdateAsync(updateRequest);
 }
             else
      {
-          await PathService.CreateAsync(pathRequest, currentUserId);
+          await PathService.CreateAsync(pathRequest);
 }
 
       await LoadPaths();

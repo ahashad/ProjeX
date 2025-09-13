@@ -37,7 +37,7 @@ namespace ProjeX.Application.Deliverable
             return deliverable != null ? _mapper.Map<DeliverableDto>(deliverable) : null;
         }
 
-        public async Task<DeliverableDto> CreateAsync(CreateDeliverableCommand command, string userId)
+        public async Task<DeliverableDto> CreateAsync(CreateDeliverableCommand command)
         {
             var entity = new Domain.Entities.Deliverable
             {
@@ -46,11 +46,7 @@ namespace ProjeX.Application.Deliverable
                 Name = command.Title,
                 Description = command.Description,
                 DueDate = command.DueDate,
-                Status = command.Status,
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow,
-                ModifiedBy = userId,
-                ModifiedAt = DateTime.UtcNow
+                Status = command.Status
             };
 
             _context.Deliverables.Add(entity);
@@ -59,7 +55,7 @@ namespace ProjeX.Application.Deliverable
             return _mapper.Map<DeliverableDto>(entity);
         }
 
-        public async Task UpdateAsync(UpdateDeliverableCommand command, string userId)
+        public async Task UpdateAsync(UpdateDeliverableCommand command)
         {
             var entity = await _context.Deliverables.FindAsync(command.Id);
 
@@ -73,8 +69,6 @@ namespace ProjeX.Application.Deliverable
             entity.Description = command.Description;
             entity.DueDate = command.DueDate;
             entity.Status = command.Status;
-            entity.ModifiedBy = userId;
-            entity.ModifiedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }

@@ -19,7 +19,7 @@ namespace ProjeX.Application.ChangeRequest
             _mapper = mapper;
         }
 
-        public async Task<ChangeRequestDto> RaiseAsync(RaiseChangeRequestCommand request, string userId)
+        public async Task<ChangeRequestDto> RaiseAsync(RaiseChangeRequestCommand request)
         {
             var project = await _context.Projects
                 .FirstOrDefaultAsync(p => p.Id == request.ProjectId && !p.IsDeleted);
@@ -47,9 +47,7 @@ namespace ProjeX.Application.ChangeRequest
                 RequestedBy = request.RequestedBy,
                 BusinessJustification = request.Justification,
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = userId,
-                ModifiedBy = userId,
-                ModifiedAt = DateTime.UtcNow
+                CreatedBy = "system"
             };
 
             _context.ChangeRequests.Add(changeRequest);

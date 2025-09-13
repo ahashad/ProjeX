@@ -38,11 +38,15 @@ namespace ProjeX.Infrastructure.Interceptors
                 if (entry.State == EntityState.Added)
                 {
                     entry.Entity.CreatedAt = DateTime.UtcNow;
+                    entry.Entity.CreatedBy = currentUser;
+                    entry.Entity.ModifiedBy = currentUser; // Set ModifiedBy for new entities
+                    entry.Entity.ModifiedAt = DateTime.UtcNow; // Set ModifiedAt for new entities
                 }
 
                 if (entry.State == EntityState.Modified)
                 {
                     entry.Entity.ModifiedAt = DateTime.UtcNow;
+                    entry.Entity.ModifiedBy = currentUser;
                 }
             }
         }

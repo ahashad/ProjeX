@@ -53,7 +53,7 @@ namespace ProjeX.Application.Path
             return path != null ? _mapper.Map<PathDto>(path) : null;
         }
 
-        public async Task<PathDto> CreateAsync(CreatePathRequest request, string userId)
+        public async Task<PathDto> CreateAsync(CreatePathRequest request)
         {
             // Validate project exists
             var project = await _context.Projects.FindAsync(request.ProjectId);
@@ -66,10 +66,6 @@ namespace ProjeX.Application.Path
                 throw new InvalidOperationException("Total path allocation would exceed 100%");
 
             var path = _mapper.Map<Domain.Entities.Path>(request);
-            path.CreatedBy = userId;
-            path.CreatedAt = DateTime.UtcNow;
-            path.ModifiedBy = userId;
-            path.ModifiedAt = DateTime.UtcNow;
             
             _context.Paths.Add(path);
             await _context.SaveChangesAsync();
@@ -89,8 +85,6 @@ namespace ProjeX.Application.Path
                 throw new InvalidOperationException("Total path allocation would exceed 100%");
 
             _mapper.Map(request, path);
-            path.ModifiedBy = userId;
-            path.ModifiedAt = DateTime.UtcNow;
             
             await _context.SaveChangesAsync();
 

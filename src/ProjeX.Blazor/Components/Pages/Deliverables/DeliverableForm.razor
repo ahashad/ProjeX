@@ -12,10 +12,6 @@
 @inject IDeliverableService DeliverableService
 @inject IProjectService ProjectService
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@inject UserManager<ApplicationUser> UserManager
-@using Microsoft.AspNetCore.Components.Authorization
-@using ProjeX.Domain.Entities
 
 <PageTitle>@(IsEdit ? "Edit" : "Create") Deliverable - ProjeX</PageTitle>
 
@@ -108,19 +104,9 @@
     private List<StatusOption> statusOptions = new();
     private bool isSubmitting = false;
     private SfToast? toastObj;
-    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            var appUser = await UserManager.GetUserAsync(user);
-            currentUserId = appUser?.Id;
-        }
-
         await LoadProjects();
         LoadStatusOptions();
 
@@ -202,11 +188,11 @@
                 updateCommand.DueDate = command.DueDate;
                 updateCommand.Status = command.Status;
 
-                await DeliverableService.UpdateAsync(updateCommand, currentUserId);
+                await DeliverableService.UpdateAsync(updateCommand);
             }
             else
             {
-                await DeliverableService.CreateAsync(command, currentUserId);
+                await DeliverableService.CreateAsync(command);
             }
 
             Navigation.NavigateTo("/deliverables");

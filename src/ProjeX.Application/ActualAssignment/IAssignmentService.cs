@@ -4,8 +4,8 @@ namespace ProjeX.Application.ActualAssignment
 {
     public interface IAssignmentService
     {
-       Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId);
-       Task ApproveAsync(Guid assignmentId, string approverUserId);
+        Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId);
+        Task ApproveAsync(Guid assignmentId, string approverUserId);
         Task RejectAsync(Guid assignmentId, string approverUserId, string reason);
         Task UnassignAsync(UnassignActualAssignmentCommand command, string userId);
         Task<List<ActualAssignmentDto>> GetAssignmentsAsync(Guid? projectId, Guid? employeeId);

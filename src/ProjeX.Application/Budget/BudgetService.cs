@@ -132,7 +132,7 @@ namespace ProjeX.Application.Budget
             return true;
         }
 
-        public async Task<bool> ApproveBudgetAsync(Guid id, string approvedById)
+        public async Task<bool> ApproveBudgetAsync(Guid id, Guid approvedById)
         {
             var budget = await _context.Budgets.FindAsync(id);
             if (budget == null)

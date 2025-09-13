@@ -9,8 +9,8 @@ namespace ProjeX.Application.Overhead
     {
         Task<List<OverheadDto>> GetAllAsync();
         Task<OverheadDto?> GetByIdAsync(Guid id);
-        Task<OverheadDto> CreateAsync(CreateOverheadCommand command, string userId);
-        Task UpdateAsync(UpdateOverheadCommand command, string userId);
+        Task<OverheadDto> CreateAsync(CreateOverheadCommand command);
+        Task UpdateAsync(UpdateOverheadCommand command);
         Task DeleteAsync(Guid id);
     }
 }

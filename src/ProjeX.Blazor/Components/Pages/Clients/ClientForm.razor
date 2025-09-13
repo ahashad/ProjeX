@@ -8,10 +8,6 @@
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IClientService ClientService
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@inject UserManager<ApplicationUser> UserManager
-@using Microsoft.AspNetCore.Components.Authorization
-@using ProjeX.Domain.Entities
 
 <PageTitle>@(IsEdit ? "Edit Client" : "Create Client") - ProjeX</PageTitle>
 
@@ -124,19 +120,9 @@
     private bool isSubmitting = false;
 
     private bool IsEdit => Id.HasValue;
-    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            var appUser = await UserManager.GetUserAsync(user);
-            currentUserId = appUser?.Id;
-        }
-
         if (IsEdit && Id.HasValue)
         {
             await LoadClient(Id.Value);
@@ -191,7 +177,7 @@
                     Address = model.Address,
                     Status = model.Status
                 };
-                await ClientService.UpdateAsync(updateCommand, currentUserId);
+                await ClientService.UpdateAsync(updateCommand);
             }
             else
             {
@@ -204,7 +190,7 @@
                     Address = model.Address,
                     Status = model.Status
                 };
-                await ClientService.CreateAsync(createCommand, currentUserId);
+                await ClientService.CreateAsync(createCommand);
             }
 
             Navigation.NavigateTo("/clients");

@@ -31,7 +31,7 @@ namespace ProjeX.Application.Client
             return client != null ? _mapper.Map<ClientDto>(client) : null;
         }
 
-       public async Task<ClientDto> CreateAsync(CreateClientCommand command, string userId)
+        public async Task<ClientDto> CreateAsync(CreateClientCommand command, string userId)
         {
             var entity = new Domain.Entities.Client
             {
@@ -54,7 +54,7 @@ namespace ProjeX.Application.Client
             return _mapper.Map<ClientDto>(entity);
         }
 
-       public async Task UpdateAsync(UpdateClientCommand command, string userId)
+        public async Task UpdateAsync(UpdateClientCommand command, string userId)
         {
             var entity = await _context.Clients.FindAsync(command.Id);
             if (entity == null)

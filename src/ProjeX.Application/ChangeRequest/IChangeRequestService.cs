@@ -6,8 +6,8 @@ namespace ProjeX.Application.ChangeRequest
 {
     public interface IChangeRequestService
     {
-        Task<ChangeRequestDto> RaiseAsync(RaiseChangeRequestCommand command, string userId);
-        Task<ChangeRequestDto> ProcessAsync(ProcessChangeRequestCommand command, string userId);
+        Task<ChangeRequestDto> RaiseAsync(RaiseChangeRequestCommand command);
+        Task<ChangeRequestDto> ProcessAsync(ProcessChangeRequestCommand command);
     }
 }
 

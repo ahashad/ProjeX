@@ -21,7 +21,7 @@ namespace ProjeX.Application.Invoice
             _mapper = mapper;
         }
 
-        public async Task<InvoiceDto> PlanAsync(PlanInvoiceCommand request, string userId)
+        public async Task<InvoiceDto> PlanAsync(PlanInvoiceCommand request)
         {
             var project = await _context.Projects
                 .Include(p => p.Client)
@@ -52,9 +52,7 @@ namespace ProjeX.Application.Invoice
                 Status = InvoiceStatus.Planned,
                 Notes = request.Notes,
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = userId,
-                ModifiedBy = userId,
-                ModifiedAt = DateTime.UtcNow
+                CreatedBy = "system"
             };
 
             _context.Invoices.Add(invoice);
@@ -71,9 +69,7 @@ namespace ProjeX.Application.Invoice
                     Amount = lineItemRequest.Quantity * lineItemRequest.UnitPrice,
                     Type = lineItemRequest.LineItemType,
                     CreatedAt = DateTime.UtcNow,
-                    CreatedBy = userId,
-                    ModifiedBy = userId,
-                    ModifiedAt = DateTime.UtcNow
+                    CreatedBy = "system"
                 };
                 _context.InvoiceLineItems.Add(lineItem);
             }
@@ -89,7 +85,7 @@ namespace ProjeX.Application.Invoice
             return _mapper.Map<InvoiceDto>(savedInvoice);
         }
 
-        public async Task<InvoiceDto> ConfirmAsync(ConfirmInvoiceCommand request, string userId)
+        public async Task<InvoiceDto> ConfirmAsync(ConfirmInvoiceCommand request)
         {
             var invoice = await _context.Invoices
                 .Include(i => i.Project)
@@ -109,14 +105,14 @@ namespace ProjeX.Application.Invoice
             invoice.Status = InvoiceStatus.Issued;
             invoice.Notes += $"\n\nConfirmed and issued on {DateTime.UtcNow:yyyy-MM-dd}: {request.ConfirmationNotes}";
             invoice.ModifiedAt = DateTime.UtcNow;
-            invoice.ModifiedBy = userId;
+            invoice.ModifiedBy = "system";
 
             await _context.SaveChangesAsync();
 
             return _mapper.Map<InvoiceDto>(invoice);
         }
 
-        public async Task<InvoiceDto> CancelAsync(CancelInvoiceCommand request, string userId)
+        public async Task<InvoiceDto> CancelAsync(CancelInvoiceCommand request)
         {
             var invoice = await _context.Invoices
                 .Include(i => i.Project)
@@ -136,7 +132,7 @@ namespace ProjeX.Application.Invoice
             invoice.Status = InvoiceStatus.Cancelled;
             invoice.Notes += $"\n\nCancelled on {DateTime.UtcNow:yyyy-MM-dd}: {request.CancellationReason}";
             invoice.ModifiedAt = DateTime.UtcNow;
-            invoice.ModifiedBy = userId;
+            invoice.ModifiedBy = "system";
 
             await _context.SaveChangesAsync();
 

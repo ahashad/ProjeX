@@ -37,7 +37,7 @@ namespace ProjeX.Application.Overhead
             return overhead != null ? _mapper.Map<OverheadDto>(overhead) : null;
         }
 
-        public async Task<OverheadDto> CreateAsync(CreateOverheadCommand command, string userId)
+        public async Task<OverheadDto> CreateAsync(CreateOverheadCommand command)
         {
             var entity = new Domain.Entities.Overhead
             {
@@ -46,11 +46,7 @@ namespace ProjeX.Application.Overhead
                 Amount = command.Amount,
                 Date = command.Date,
                 Category = command.Category,
-                ProjectId = command.ProjectId,
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow,
-                ModifiedBy = userId,
-                ModifiedAt = DateTime.UtcNow
+                ProjectId = command.ProjectId
             };
 
             _context.Overheads.Add(entity);
@@ -59,7 +55,7 @@ namespace ProjeX.Application.Overhead
             return _mapper.Map<OverheadDto>(entity);
         }
 
-        public async Task UpdateAsync(UpdateOverheadCommand command, string userId)
+        public async Task UpdateAsync(UpdateOverheadCommand command)
         {
             var entity = await _context.Overheads.FindAsync(command.Id);
 
@@ -73,8 +69,6 @@ namespace ProjeX.Application.Overhead
             entity.Date = command.Date;
             entity.Category = command.Category;
             entity.ProjectId = command.ProjectId;
-            entity.ModifiedBy = userId;
-            entity.ModifiedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }

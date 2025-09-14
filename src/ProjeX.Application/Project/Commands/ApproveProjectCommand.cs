@@ -7,15 +7,17 @@ namespace ProjeX.Application.Project.Commands
     {
         [Required]
         public Guid ProjectId { get; set; }
-        
+
         [Required]
         public DateTime StartDate { get; set; }
-        
+
         [Required]
         public DateTime EndDate { get; set; }
-        
+
+        public Guid? ProjectManagerId { get; set; }
+
         public string ApprovalNotes { get; set; } = string.Empty;
-        
+
         public DateTime ApprovedDate { get; set; } = DateTime.UtcNow;
     }
 }

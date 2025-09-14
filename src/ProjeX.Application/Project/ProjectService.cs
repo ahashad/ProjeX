@@ -169,10 +169,12 @@ namespace ProjeX.Application.Project
 
             project.StartDate = command.StartDate;
             project.EndDate = command.EndDate;
-            project.Status = ProjectStatus.InProgress;
+            project.ProjectManagerId = command.ProjectManagerId;
+
+            // Set status based on end date
+            project.Status = command.EndDate < DateTime.Today ? ProjectStatus.Completed : ProjectStatus.InProgress;
             project.IsApproved = true;
             project.ApprovedAt = command.ApprovedDate;
-            // Note: ApprovedById would need to be set if we have the approver's employee ID
 
             var approvalNote = string.IsNullOrEmpty(command.ApprovalNotes)
                 ? $"Project approved and started on {command.ApprovedDate:yyyy-MM-dd}"

@@ -1,5 +1,6 @@
 @page "/time-entries/create"
 @page "/time-entries/edit/{id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.TimeEntry
 @using ProjeX.Application.TimeEntry.Commands

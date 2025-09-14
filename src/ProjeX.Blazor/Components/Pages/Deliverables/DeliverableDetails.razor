@@ -1,10 +1,13 @@
 @page "/deliverables/details/{Id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Deliverable
 @using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
 @using Syncfusion.Blazor.Notifications
 @attribute [Authorize]
 @inject IDeliverableService DeliverableService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>Deliverable Details - ProjeX</PageTitle>
@@ -196,7 +199,9 @@ else
                 Status = newStatus
             };
 
-            await DeliverableService.UpdateAsync(updateCommand);
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+            await DeliverableService.UpdateAsync(updateCommand, userId);
             await LoadDeliverable(); // Reload to get updated data
             
             await ShowSuccessAsync($"Status updated to {newStatus}");

@@ -1,16 +1,19 @@
 @page "/deliverables/create"
 @page "/deliverables/edit/{Id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Deliverable
 @using ProjeX.Application.Deliverable.Commands
 @using ProjeX.Application.Project
 @using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
 @using Syncfusion.Blazor.DropDowns
 @using Syncfusion.Blazor.Calendars
 @using Syncfusion.Blazor.Notifications
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IDeliverableService DeliverableService
 @inject IProjectService ProjectService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>@(IsEdit ? "Edit" : "Create") Deliverable - ProjeX</PageTitle>
@@ -188,11 +191,15 @@
                 updateCommand.DueDate = command.DueDate;
                 updateCommand.Status = command.Status;
 
-                await DeliverableService.UpdateAsync(updateCommand);
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                var userId = currentUser?.Id ?? "System";
+                await DeliverableService.UpdateAsync(updateCommand, userId);
             }
             else
             {
-                await DeliverableService.CreateAsync(command);
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                var userId = currentUser?.Id ?? "System";
+                await DeliverableService.CreateAsync(command, userId);
             }
 
             Navigation.NavigateTo("/deliverables");

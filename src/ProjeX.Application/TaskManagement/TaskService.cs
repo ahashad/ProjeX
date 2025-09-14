@@ -47,6 +47,8 @@ namespace ProjeX.Application.TaskManagement
             await _context.SaveChangesAsync();
 
             // Add dependencies
+            // TODO: Re-enable when TaskDependency is properly configured in EF
+            /*
             if (request.DependentTaskIds?.Any() == true)
             {
                 foreach (var dependentTaskId in request.DependentTaskIds)
@@ -59,6 +61,7 @@ namespace ProjeX.Application.TaskManagement
                 }
                 await _context.SaveChangesAsync();
             }
+            */
 
             return await GetByIdAsync(task.Id) ?? throw new InvalidOperationException("Failed to retrieve created task");
         }
@@ -151,17 +154,23 @@ namespace ProjeX.Application.TaskManagement
                 return false;
 
             // Check if task has dependent tasks
+            // TODO: Re-enable when TaskDependency is properly configured in EF
+            /*
             var hasDependents = await _context.TaskDependencies
                 .AnyAsync(td => td.DependentTaskId == id);
+            */
+            var hasDependents = false;
             
             if (hasDependents)
                 throw new InvalidOperationException("Cannot delete task that has dependent tasks");
 
             // Remove dependencies
             // TODO: Fix Dependencies removal after fixing EF configuration
-            // _context.TaskDependencies.RemoveRange(task.Dependencies);
+            // TODO: Re-enable when TaskDependency is properly configured in EF
+            /*
             var taskDependencies = await _context.TaskDependencies.Where(td => td.TaskId == id).ToListAsync();
             _context.TaskDependencies.RemoveRange(taskDependencies);
+            */
             
             // Remove task
             _context.Tasks.Remove(task);
@@ -290,6 +299,8 @@ namespace ProjeX.Application.TaskManagement
             visited.Add(task.Id);
             var path = new List<Domain.Entities.Task> { task };
 
+            // TODO: Re-enable when TaskDependency is properly configured in EF
+            /*
             var dependentTasks = _context.TaskDependencies
                 .Where(td => td.DependentTaskId == task.Id)
                 .Select(td => taskDict[td.TaskId])
@@ -304,7 +315,7 @@ namespace ProjeX.Application.TaskManagement
                 {
                     var subPath = GetLongestPath(dependentTask, taskDict, new HashSet<Guid>(visited));
                     var subDuration = subPath.Sum(t => t.EstimatedHours);
-                    
+
                     if (subDuration > maxSubDuration)
                     {
                         maxSubDuration = subDuration;
@@ -314,6 +325,7 @@ namespace ProjeX.Application.TaskManagement
 
                 path.AddRange(longestSubPath);
             }
+            */
 
             return path;
         }

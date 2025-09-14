@@ -1,5 +1,6 @@
 @page "/employees/create"
 @page "/employees/edit/{id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Employee
 @using ProjeX.Application.Employee.Commands

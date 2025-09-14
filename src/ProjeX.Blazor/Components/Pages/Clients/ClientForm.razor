@@ -1,5 +1,6 @@
 @page "/clients/create"
 @page "/clients/edit/{id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Client
 @using ProjeX.Application.Client.Commands

@@ -1,4 +1,5 @@
 @page "/employees/details/{id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Employee
 @attribute [Authorize]

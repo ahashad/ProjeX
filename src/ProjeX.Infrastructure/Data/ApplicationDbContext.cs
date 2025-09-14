@@ -30,7 +30,8 @@ namespace ProjeX.Infrastructure.Data
 
         // Additional DbSets that were missing
         public DbSet<Domain.Entities.Task> Tasks { get; set; }
-        public DbSet<TaskDependency> TaskDependencies { get; set; }
+        // TODO: Add back TaskDependency after fixing EF configuration
+        // public DbSet<TaskDependency> TaskDependencies { get; set; }
  public DbSet<Account> Accounts { get; set; }
    public DbSet<Opportunity> Opportunities { get; set; }
         public DbSet<OpportunityActivity> OpportunityActivities { get; set; }

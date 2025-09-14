@@ -2,10 +2,16 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Project
+@using ProjeX.Application.Project.Commands
+@using ProjeX.Application.Employee
+@using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Popups
 @attribute [Authorize]
 @inject IProjectService ProjectService
+@inject IEmployeeService EmployeeService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>Projects - ProjeX</PageTitle>
@@ -67,6 +73,17 @@ else
                                 var project = (context as ProjectDto);
                             }
                             <div class="btn-group btn-group-sm">
+                                @if (project?.Status == ProjectStatus.Planned)
+                                {
+                                    <AuthorizeView Policy="ManagerOrAdmin" Context="approveAuth">
+                                        <Authorized>
+                                            <button class="btn btn-outline-success" title="Approve Project"
+                                                    @onclick="() => ShowApprovalModal(project!)">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                }
                                 <a href="/projects/details/@project?.Id" class="btn btn-outline-info" title="Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
@@ -102,11 +119,19 @@ else
     </DialogButtons>
 </SfDialog>
 
+<ProjectApprovalModal @bind-IsVisible="@showApprovalModal"
+                      ProjectId="@(selectedProjectForApproval?.Id ?? Guid.Empty)"
+                      ProjectName="@(selectedProjectForApproval?.ProjectName ?? string.Empty)"
+                      ExpectedWorkingPeriodMonths="@(selectedProjectForApproval?.ExpectedWorkingPeriodMonths ?? 0)"
+                      OnApproved="@HandleProjectApproval" />
+
 @code {
     private SfGrid<ProjectDto>? Grid;
     private List<ProjectDto>? projects;
     private bool showDeleteDialog = false;
     private ProjectDto? selectedProject;
+    private bool showApprovalModal = false;
+    private ProjectDto? selectedProjectForApproval;
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,6 +195,36 @@ else
             {
                 Console.WriteLine($"Error deleting project: {ex.Message}");
             }
+        }
+    }
+
+    private void ShowApprovalModal(ProjectDto project)
+    {
+        selectedProjectForApproval = project;
+        showApprovalModal = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleProjectApproval(ApproveProjectCommand command)
+    {
+        try
+        {
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+
+            await ProjectService.ApproveAsync(command, userId);
+            await LoadProjects(); // Refresh the list to show updated status
+
+            showApprovalModal = false;
+            selectedProjectForApproval = null;
+            StateHasChanged();
+
+            Console.WriteLine("Project approved successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error approving project: {ex.Message}");
+            // In a real app, you'd want to show a user-friendly error message
         }
     }
 }

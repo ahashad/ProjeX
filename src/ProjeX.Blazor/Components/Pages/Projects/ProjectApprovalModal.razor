@@ -1,0 +1,228 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.Project.Commands
+@using ProjeX.Application.Employee
+@using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
+@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.DropDowns
+@using System.ComponentModel.DataAnnotations
+
+@inject ICurrentUserService CurrentUserService
+@inject IEmployeeService EmployeeService
+
+<SfDialog @bind-Visible="@IsVisible" Width="600px" IsModal="true" ShowCloseIcon="true">
+    <DialogTemplates>
+        <Header>
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle text-success me-2"></i>
+                Approve Project: @ProjectName
+            </div>
+        </Header>
+        <Content>
+            <EditForm Model="@approvalModel" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger" />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="startDate" class="form-label">Start Date *</label>
+                        <SfDatePicker id="startDate" @bind-Value="@StartDateValue"
+                                      CssClass="form-control"
+                                      Placeholder="Select start date" />
+                        <ValidationMessage For="@(() => approvalModel.StartDate)" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="endDate" class="form-label">End Date (Auto-calculated)</label>
+                        <SfDatePicker id="endDate" @bind-Value="@calculatedEndDate"
+                                      Enabled="false" CssClass="form-control" />
+                        <small class="text-muted">Based on start date + project period</small>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <label for="projectManager" class="form-label">Project Manager (Optional)</label>
+                        <SfDropDownList TValue="Guid?" TItem="EmployeeDto"
+                                        @bind-Value="@approvalModel.ProjectManagerId"
+                                        DataSource="@employees"
+                                        Placeholder="Select project manager"
+                                        CssClass="form-control"
+                                        AllowFiltering="true"
+                                        FilterType="FilterType.Contains">
+                            <DropDownListFieldSettings Value="@nameof(EmployeeDto.Id)" 
+                                                       Text="@nameof(EmployeeDto.FullName)" />
+                        </SfDropDownList>
+
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="approvalNotes" class="form-label">Approval Notes</label>
+                    <textarea id="approvalNotes" class="form-control" rows="3"
+                              @bind="@approvalModel.ApprovalNotes"
+                              placeholder="Optional notes about the approval..."></textarea>
+                </div>
+
+                @if (IsEndDateInPast)
+                {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Notice:</strong> The calculated end date is in the past.
+                        The project status will be set to <strong>Completed</strong> instead of In Progress.
+                    </div>
+                }
+
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Project Details:</h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li><strong>Expected Duration:</strong> @ExpectedWorkingPeriodMonths months</li>
+                            <li><strong>Calculated End Date:</strong> @calculatedEndDate?.ToString("MM/dd/yyyy")</li>
+                            <li><strong>Status after approval:</strong>
+                                <span class="badge @(IsEndDateInPast ? "bg-success" : "bg-primary")">
+                                    @(IsEndDateInPast ? "Completed" : "In Progress")
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@Cancel" />
+        <DialogButton Content="Approve Project" IsPrimary="true" OnClick="@HandleValidSubmit" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public string ProjectName { get; set; } = string.Empty;
+    [Parameter] public decimal ExpectedWorkingPeriodMonths { get; set; }
+    [Parameter] public EventCallback<ApproveProjectCommand> OnApproved { get; set; }
+
+    private ApprovalFormModel approvalModel = new();
+    private List<EmployeeDto>? employees;
+    private DateTime? calculatedEndDate;
+
+    private bool IsEndDateInPast => calculatedEndDate.HasValue && calculatedEndDate.Value.Date < DateTime.Today;
+
+    private DateTime? StartDateValue
+    {
+        get => approvalModel.StartDate;
+        set
+        {
+            Console.WriteLine($"StartDateValue setter called with: {value}");
+            approvalModel.StartDate = value;
+            CalculateEndDate();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+        approvalModel.StartDate = DateTime.Today;
+        CalculateEndDate();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && ProjectId != Guid.Empty)
+        {
+            // Ensure employees are loaded when modal becomes visible
+            if (employees == null || employees.Count == 0)
+            {
+                await LoadEmployees();
+            }
+
+            approvalModel.ProjectId = ProjectId;
+            approvalModel.StartDate = DateTime.Today;
+            CalculateEndDate();
+
+            StateHasChanged(); // Trigger UI update
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            employees = await EmployeeService.GetAllAsync();
+            Console.WriteLine($"Loaded {employees?.Count ?? 0} employees for dropdown");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employees: {ex.Message}");
+            employees = new List<EmployeeDto>();
+        }
+    }
+
+    private void CalculateEndDate()
+    {
+        if (approvalModel.StartDate.HasValue)
+        {
+            var months = (int)Math.Round(ExpectedWorkingPeriodMonths);
+            calculatedEndDate = approvalModel.StartDate.Value.AddMonths(months);
+            approvalModel.EndDate = calculatedEndDate.Value;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            CalculateEndDate(); // Ensure end date is up to date
+
+            var command = new ApproveProjectCommand
+            {
+                ProjectId = ProjectId,
+                StartDate = approvalModel.StartDate!.Value,
+                EndDate = calculatedEndDate!.Value,
+                ProjectManagerId = approvalModel.ProjectManagerId,
+                ApprovalNotes = approvalModel.ApprovalNotes ?? string.Empty,
+                ApprovedDate = DateTime.UtcNow
+            };
+
+            await OnApproved.InvokeAsync(command);
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in approval: {ex.Message}");
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+
+        // Reset form
+        approvalModel = new ApprovalFormModel();
+        calculatedEndDate = null;
+    }
+
+    public class ApprovalFormModel
+    {
+        public Guid ProjectId { get; set; }
+
+        [Required(ErrorMessage = "Start date is required")]
+        public DateTime? StartDate { get; set; }
+
+        public DateTime EndDate { get; set; }
+
+        public Guid? ProjectManagerId { get; set; }
+
+        public string? ApprovalNotes { get; set; }
+    }
+}

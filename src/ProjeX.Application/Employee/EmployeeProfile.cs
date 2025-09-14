@@ -9,7 +9,7 @@ namespace ProjeX.Application.Employee
         {
             CreateMap<ProjeX.Domain.Entities.Employee, EmployeeDto>()
                 .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.RoleName))
-                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName));
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}".Trim()));
         }
     }
 }

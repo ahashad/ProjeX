@@ -5,9 +5,11 @@
 @using ProjeX.Application.Client.Commands
 @using ProjeX.Domain.Enums
 @using System.ComponentModel.DataAnnotations
+@using ProjeX.Domain.Interfaces
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IClientService ClientService
 @inject NavigationManager Navigation
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>@(IsEdit ? "Edit Client" : "Create Client") - ProjeX</PageTitle>
 
@@ -118,11 +120,14 @@
 
     private ClientFormModel model = new();
     private bool isSubmitting = false;
+    private string currentUserId = string.Empty;
 
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnInitializedAsync()
     {
+        var user = await CurrentUserService.GetCurrentUserAsync();
+        currentUserId = user?.Id ?? "System";
         if (IsEdit && Id.HasValue)
         {
             await LoadClient(Id.Value);
@@ -177,7 +182,7 @@
                     Address = model.Address,
                     Status = model.Status
                 };
-                await ClientService.UpdateAsync(updateCommand);
+                await ClientService.UpdateAsync(updateCommand, currentUserId);
             }
             else
             {
@@ -190,7 +195,7 @@
                     Address = model.Address,
                     Status = model.Status
                 };
-                await ClientService.CreateAsync(createCommand);
+                await ClientService.CreateAsync(createCommand, currentUserId);
             }
 
             Navigation.NavigateTo("/clients");

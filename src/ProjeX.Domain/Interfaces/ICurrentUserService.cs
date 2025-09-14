@@ -1,6 +1,6 @@
 using ProjeX.Domain.Entities;
 
-namespace ProjeX.Application.Identity
+namespace ProjeX.Domain.Interfaces
 {
     public interface ICurrentUserService
     {

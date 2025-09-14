@@ -4,11 +4,20 @@
 @using ProjeX.Application.Project
 @using ProjeX.Application.Path
 @using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
+@using System.Security.Claims
 
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IBudgetService BudgetService
 @inject IProjectService ProjectService
 @inject IPathService PathService
+
+@code {
+    [CascadingParameter]
+    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+}
+
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>Project Budgets - ProjeX</PageTitle>
 
@@ -128,9 +137,16 @@
     private bool isLoading = false;
     private bool isSubmitting = false;
     private string selectedProjectId = string.Empty;
+    private string currentUserId = string.Empty;
 
- protected override async System.Threading.Tasks.Task OnInitializedAsync()
-  {
+    protected override async System.Threading.Tasks.Task OnInitializedAsync()
+    {
+        // Derive userId from authentication state to avoid DbContext usage during init
+        var auth = await AuthenticationStateTask;
+        if (auth.User.Identity?.IsAuthenticated == true)
+        {
+            currentUserId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+        }
         await LoadProjects();
         await LoadBudgets();
     }
@@ -241,11 +257,11 @@ updateRequest.Description = budgetRequest.Description;
         updateRequest.PeriodEnd = budgetRequest.PeriodEnd;
                 updateRequest.Notes = budgetRequest.Notes;
         
-     await BudgetService.UpdateAsync(updateRequest);
+     await BudgetService.UpdateAsync(updateRequest, currentUserId);
    }
        else
    {
-       await BudgetService.CreateAsync(budgetRequest);
+       await BudgetService.CreateAsync(budgetRequest, currentUserId);
             }
 
             await LoadBudgets();

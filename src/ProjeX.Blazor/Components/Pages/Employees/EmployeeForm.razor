@@ -8,10 +8,12 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Threading.Tasks
 @using Syncfusion.Blazor.Calendars
+@using ProjeX.Domain.Interfaces
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IEmployeeService EmployeeService
 @inject IRolesCatalogService RolesCatalogService
 @inject NavigationManager Navigation
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>@(IsEdit ? "Edit Employee" : "Create Employee") - ProjeX</PageTitle>
 
@@ -191,11 +193,14 @@
     private List<RolesCatalogDto>? roles;
     private RolesCatalogDto? selectedRole;
     private bool isSubmitting = false;
+    private string currentUserId = string.Empty;
 
     private bool IsEdit => Id.HasValue;
 
     protected override async System.Threading.Tasks.Task OnInitializedAsync()
     {
+        var user = await CurrentUserService.GetCurrentUserAsync();
+        currentUserId = user?.Id ?? "System";
         await LoadRoles();
         if (IsEdit && Id.HasValue)
         {
@@ -299,7 +304,7 @@
                     CommissionPercent = model.CommissionPercent,
                     IsActive = model.IsActive
                 };
-                await EmployeeService.UpdateAsync(updateCommand);
+                await EmployeeService.UpdateAsync(updateCommand, currentUserId);
             }
             else
             {
@@ -316,7 +321,7 @@
                     CommissionPercent = model.CommissionPercent,
                     IsActive = model.IsActive
                 };
-                await EmployeeService.CreateAsync(createCommand);
+                await EmployeeService.CreateAsync(createCommand, currentUserId);
             }
 
             Navigation.NavigateTo("/employees");

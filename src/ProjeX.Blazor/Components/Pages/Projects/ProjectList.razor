@@ -1,4 +1,5 @@
 @page "/projects"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Project
 @using Syncfusion.Blazor.Grids
@@ -32,18 +33,26 @@ else
 {
     <div class="card">
         <div class="card-body">
-            <SfGrid DataSource="@projects" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
-                    AllowSelection="true" PageSize="10">
-                <GridPageSettings PageSize="10"></GridPageSettings>
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+            <SfGrid @ref="Grid" DataSource="@projects" AllowPaging="true" AllowSorting="true" AllowFiltering="true" 
+                    AllowSelection="true" PageSize="10" Height="600">
+                <GridPageSettings PageSize="10" PageSizes="true"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
+                <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row"></GridSelectionSettings>
                 <GridColumns>
-                    <GridColumn Field=@nameof(ProjectDto.ProjectName) HeaderText="Project Name" Width="200"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.ClientName) HeaderText="Client" Width="150"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.StartDate) HeaderText="Start Date" Width="120" Format="d"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.EndDate) HeaderText="End Date" Width="120" Format="d"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.Budget) HeaderText="Budget" Width="120" Format="C"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.ProjectPrice) HeaderText="Price" Width="120" Format="C"></GridColumn>
-                    <GridColumn Field=@nameof(ProjectDto.Status) HeaderText="Status" Width="120">
+                    <GridColumn Field=@nameof(ProjectDto.ProjectName) HeaderText="Project Name" Width="200" 
+                                Type="ColumnType.String"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.ClientName) HeaderText="Client" Width="150" 
+                                Type="ColumnType.String"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.StartDate) HeaderText="Start Date" Width="130" 
+                                Format="d" Type="ColumnType.Date"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.EndDate) HeaderText="End Date" Width="130" 
+                                Format="d" Type="ColumnType.Date"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.Budget) HeaderText="Budget" Width="130" 
+                                Format="C" Type="ColumnType.Number"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.ProjectPrice) HeaderText="Price" Width="130" 
+                                Format="C" Type="ColumnType.Number"></GridColumn>
+                    <GridColumn Field=@nameof(ProjectDto.Status) HeaderText="Status" Width="120" 
+                                Type="ColumnType.String">
                         <Template>
                             @{
                                 var project = (context as ProjectDto);
@@ -52,7 +61,7 @@ else
                             <span class="badge @badgeClass">@project?.Status</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                    <GridColumn HeaderText="Actions" Width="180" AllowFiltering="false" AllowSorting="false">
                         <Template>
                             @{
                                 var project = (context as ProjectDto);
@@ -94,6 +103,7 @@ else
 </SfDialog>
 
 @code {
+    private SfGrid<ProjectDto>? Grid;
     private List<ProjectDto>? projects;
     private bool showDeleteDialog = false;
     private ProjectDto? selectedProject;
@@ -108,6 +118,7 @@ else
         try
         {
             projects = await ProjectService.GetAllAsync();
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -120,6 +131,7 @@ else
         return status?.ToString() switch
         {
             "Planned" => "bg-secondary",
+            "Active" => "bg-info",
             "InProgress" => "bg-primary",
             "Completed" => "bg-success",
             "OnHold" => "bg-warning",
@@ -132,12 +144,14 @@ else
     {
         selectedProject = project;
         showDeleteDialog = true;
+        StateHasChanged();
     }
 
     private void CancelDelete()
     {
         showDeleteDialog = false;
         selectedProject = null;
+        StateHasChanged();
     }
 
     private async Task ConfirmDelete()
@@ -150,6 +164,7 @@ else
                 await LoadProjects();
                 showDeleteDialog = false;
                 selectedProject = null;
+                StateHasChanged();
             }
             catch (Exception ex)
             {

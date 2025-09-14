@@ -1,16 +1,20 @@
 @page "/projects/create"
 @page "/projects/edit/{id:guid}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.Project
 @using ProjeX.Application.Project.Commands
 @using ProjeX.Application.Client
+@using ProjeX.Domain.Interfaces
 @using ProjeX.Domain.Enums
 @using System.ComponentModel.DataAnnotations
 @using Syncfusion.Blazor.Calendars
 @attribute [Authorize(Policy = "ManagerOrAdmin")]
 @inject IProjectService ProjectService
 @inject IClientService ClientService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
+
 
 <PageTitle>@(IsEdit ? "Edit Project" : "Create Project") - ProjeX</PageTitle>
 
@@ -47,23 +51,6 @@
                                     }
                                 </InputSelect>
                                 <ValidationMessage For="@(() => model.ClientId)" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="startDate" class="form-label">Start Date *</label>
-                                <SfDatePicker id="startDate" @bind-Value="model.StartDate" CssClass="form-control"></SfDatePicker>
-                                <ValidationMessage For="@(() => model.StartDate)" />
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="endDate" class="form-label">End Date *</label>
-                                <SfDatePicker id="endDate" @bind-Value="model.EndDate" CssClass="form-control"></SfDatePicker>
-                                <ValidationMessage For="@(() => model.EndDate)" />
                             </div>
                         </div>
                     </div>
@@ -107,6 +94,30 @@
                         </div>
                     </div>
 
+
+                    @if (IsEdit)
+                    {
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="startDate" class="form-label">Start Date *</label>
+                                    <SfDatePicker id="startDate" @bind-Value="model.StartDate" CssClass="form-control"></SfDatePicker>
+                                    <ValidationMessage For="@(() => model.StartDate)" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="endDate" class="form-label">End Date *</label>
+                                    <SfDatePicker id="endDate" @bind-Value="model.EndDate" CssClass="form-control"></SfDatePicker>
+                                    <ValidationMessage For="@(() => model.EndDate)" />
+                                </div>
+                            </div>
+                        </div>
+
+                    }
+
+
+
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes</label>
                         <InputTextArea id="notes" class="form-control" rows="4" @bind-Value="model.Notes" />
@@ -133,7 +144,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
@@ -155,14 +166,19 @@
 
     [SupplyParameterFromForm]
     private ProjectFormModel model { get; set; } = new();
-    
+
     private List<ClientDto>? clients;
     private bool isSubmitting = false;
+    private string currentUserId = string.Empty;
 
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get current user ID
+        var currentUser = await CurrentUserService.GetCurrentUserAsync();
+        currentUserId = currentUser?.Id ?? "System";
+
         await LoadClients();
         if (IsEdit && Id.HasValue)
         {
@@ -171,8 +187,6 @@
         else
         {
             // Set default dates for new projects
-            model.StartDate = DateTime.Today;
-            model.EndDate = DateTime.Today.AddMonths(3);
             model.Status = ProjectStatus.Planned;
         }
     }
@@ -225,8 +239,10 @@
     private async Task HandleValidSubmit()
     {
         if (isSubmitting) return; // Prevent double submission
-        
+
         isSubmitting = true;
+        StateHasChanged();
+
         try
         {
             if (IsEdit)
@@ -244,7 +260,7 @@
                     Status = model.Status,
                     Notes = model.Notes
                 };
-                await ProjectService.UpdateAsync(updateCommand);
+                await ProjectService.UpdateAsync(updateCommand, currentUserId);
             }
             else
             {
@@ -260,9 +276,12 @@
                     Status = model.Status,
                     Notes = model.Notes
                 };
-                await ProjectService.CreateAsync(createCommand);
+                await ProjectService.CreateAsync(createCommand, currentUserId);
             }
 
+            // Use StateHasChanged and then navigate
+            StateHasChanged();
+            await Task.Delay(100); // Small delay to ensure state is updated
             Navigation.NavigateTo("/projects");
         }
         catch (Exception ex)
@@ -273,6 +292,7 @@
         finally
         {
             isSubmitting = false;
+            StateHasChanged();
         }
     }
 
@@ -284,34 +304,32 @@
     public class ProjectFormModel
     {
         public Guid Id { get; set; }
-        
+
         [Required(ErrorMessage = "Project name is required")]
         [StringLength(200, ErrorMessage = "Project name cannot exceed 200 characters")]
         public string ProjectName { get; set; } = string.Empty;
-        
+
         [Required(ErrorMessage = "Client is required")]
         public Guid ClientId { get; set; }
-        
-        [Required(ErrorMessage = "Start date is required")]
-        public DateTime StartDate { get; set; } = DateTime.Today;
-        
-        [Required(ErrorMessage = "End date is required")]
-        public DateTime EndDate { get; set; } = DateTime.Today.AddMonths(3);
-        
+
+        public DateTime? StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
         [Required(ErrorMessage = "Budget is required")]
         [Range(0, double.MaxValue, ErrorMessage = "Budget must be positive")]
         public decimal Budget { get; set; }
-        
+
         [Required(ErrorMessage = "Project price is required")]
         [Range(0, double.MaxValue, ErrorMessage = "Project price must be positive")]
         public decimal ProjectPrice { get; set; }
-        
+
         [Required(ErrorMessage = "Working period is required")]
         [Range(0.1, double.MaxValue, ErrorMessage = "Working period must be greater than 0")]
         public decimal ExpectedWorkingPeriodMonths { get; set; } = 3;
-        
+
         public ProjectStatus Status { get; set; } = ProjectStatus.Planned;
-        
+
         public string Notes { get; set; } = string.Empty;
     }
 }

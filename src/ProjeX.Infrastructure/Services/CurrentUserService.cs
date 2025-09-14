@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using ProjeX.Application.Identity;
+using ProjeX.Domain.Interfaces;
 using ProjeX.Domain.Entities;
 using System.Security.Claims;
 

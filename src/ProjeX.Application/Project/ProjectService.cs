@@ -23,100 +23,21 @@ namespace ProjeX.Application.Project
 
         public async Task<List<ProjectDto>> GetAllAsync()
         {
-            var projectData = await _context.Projects
+            var projects = await _context.Projects
                 .Include(p => p.Client)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.ProjectName,
-                    p.ClientId,
-                    ClientName = p.Client.ClientName,
-                    p.StartDate,
-                    p.EndDate,
-                    p.Budget,
-                    p.ProjectPrice,
-                    ExpectedWorkingPeriodMonths = EF.Property<int>(p, "ExpectedWorkingPeriodMonths") == 0
-                        ? 0m
-                        : (decimal)EF.Property<int>(p, "ExpectedWorkingPeriodMonths"),
-                    p.Status,
-                    p.Notes,
-                    p.CreatedBy,
-                    p.CreatedAt,
-                    p.ModifiedBy,
-                    p.ModifiedAt
-                })
+                .Where(p => !p.IsDeleted)
                 .ToListAsync();
 
-            return projectData.Select(p => new ProjectDto
-            {
-                Id = p.Id,
-                ProjectName = p.ProjectName,
-                ClientId = p.ClientId,
-                ClientName = p.ClientName,
-                StartDate = p.StartDate,
-                EndDate = p.EndDate,
-                Budget = p.Budget,
-                ProjectPrice = p.ProjectPrice,
-                ExpectedWorkingPeriodMonths = p.ExpectedWorkingPeriodMonths,
-                Status = p.Status,
-                Notes = p.Notes,
-                CreatedBy = p.CreatedBy,
-                CreatedAt = p.CreatedAt,
-                ModifiedBy = p.ModifiedBy,
-                ModifiedAt = p.ModifiedAt
-            }).ToList();
+            return _mapper.Map<List<ProjectDto>>(projects);
         }
 
         public async Task<ProjectDto?> GetByIdAsync(Guid id)
         {
-            var projectData = await _context.Projects
+            var project = await _context.Projects
                 .Include(p => p.Client)
-                .Where(p => p.Id == id)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.ProjectName,
-                    p.ClientId,
-                    ClientName = p.Client.ClientName,
-                    p.StartDate,
-                    p.EndDate,
-                    p.Budget,
-                    p.ProjectPrice,
-                    ExpectedWorkingPeriodMonths = EF.Property<int>(p, "ExpectedWorkingPeriodMonths") == 0
-                        ? 0m
-                        : (decimal)EF.Property<int>(p, "ExpectedWorkingPeriodMonths"),
-                    p.Status,
-                    p.Notes,
-                    p.CreatedBy,
-                    p.CreatedAt,
-                    p.ModifiedBy,
-                    p.ModifiedAt
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
-            if (projectData == null)
-            {
-                return null;
-            }
-
-            return new ProjectDto
-            {
-                Id = projectData.Id,
-                ProjectName = projectData.ProjectName,
-                ClientId = projectData.ClientId,
-                ClientName = projectData.ClientName,
-                StartDate = projectData.StartDate,
-                EndDate = projectData.EndDate,
-                Budget = projectData.Budget,
-                ProjectPrice = projectData.ProjectPrice,
-                ExpectedWorkingPeriodMonths = projectData.ExpectedWorkingPeriodMonths,
-                Status = projectData.Status,
-                Notes = projectData.Notes,
-                CreatedBy = projectData.CreatedBy,
-                CreatedAt = projectData.CreatedAt,
-                ModifiedBy = projectData.ModifiedBy,
-                ModifiedAt = projectData.ModifiedAt
-            };
+            return project != null ? _mapper.Map<ProjectDto>(project) : null;
         }
 
         public async Task<ProjectDto> CreateAsync(CreateProjectCommand command, string userId)
@@ -136,71 +57,35 @@ namespace ProjeX.Application.Project
                 EndDate = command.EndDate,
                 Budget = command.Budget,
                 ProjectPrice = command.ProjectPrice,
+                ExpectedWorkingPeriodMonths = command.ExpectedWorkingPeriodMonths,
                 Status = command.Status,
-                Notes = command.Notes,
+                Notes = command.Notes ?? string.Empty,
+
+                // Set default values for new properties
+                Description = string.Empty,
+                ContractValue = command.ProjectPrice, // Use project price as default
+                Currency = "SAR",
+                PaymentTerms = string.Empty,
+                PlannedMargin = 0,
+                ActualMargin = 0,
+                IsApproved = false,
+
+                // Audit fields
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 ModifiedBy = userId,
                 ModifiedAt = DateTime.UtcNow
             };
 
-            try
-            {
-                _context.Projects.Add(entity);
-                _context.Entry(entity).Property("ExpectedWorkingPeriodMonths").CurrentValue =
-                    Convert.ToInt32(Math.Round(command.ExpectedWorkingPeriodMonths));
-            }
-            catch
-            {
-                entity.ExpectedWorkingPeriodMonths = command.ExpectedWorkingPeriodMonths;
-                _context.Projects.Add(entity);
-            }
-
+            _context.Projects.Add(entity);
             await _context.SaveChangesAsync();
 
-            var savedProjectData = await _context.Projects
+            // Reload with client information
+            var savedProject = await _context.Projects
                 .Include(p => p.Client)
-                .Where(p => p.Id == entity.Id)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.ProjectName,
-                    p.ClientId,
-                    ClientName = p.Client.ClientName,
-                    p.StartDate,
-                    p.EndDate,
-                    p.Budget,
-                    p.ProjectPrice,
-                    ExpectedWorkingPeriodMonths = EF.Property<int>(p, "ExpectedWorkingPeriodMonths") == 0
-                        ? 0m
-                        : (decimal)EF.Property<int>(p, "ExpectedWorkingPeriodMonths"),
-                    p.Status,
-                    p.Notes,
-                    p.CreatedBy,
-                    p.CreatedAt,
-                    p.ModifiedBy,
-                    p.ModifiedAt
-                })
-                .FirstAsync();
+                .FirstAsync(p => p.Id == entity.Id);
 
-            return new ProjectDto
-            {
-                Id = savedProjectData.Id,
-                ProjectName = savedProjectData.ProjectName,
-                ClientId = savedProjectData.ClientId,
-                ClientName = savedProjectData.ClientName,
-                StartDate = savedProjectData.StartDate,
-                EndDate = savedProjectData.EndDate,
-                Budget = savedProjectData.Budget,
-                ProjectPrice = savedProjectData.ProjectPrice,
-                ExpectedWorkingPeriodMonths = savedProjectData.ExpectedWorkingPeriodMonths,
-                Status = savedProjectData.Status,
-                Notes = savedProjectData.Notes,
-                CreatedBy = savedProjectData.CreatedBy,
-                CreatedAt = savedProjectData.CreatedAt,
-                ModifiedBy = savedProjectData.ModifiedBy,
-                ModifiedAt = savedProjectData.ModifiedAt
-            };
+            return _mapper.Map<ProjectDto>(savedProject);
         }
 
         public async Task UpdateAsync(UpdateProjectCommand command, string userId)
@@ -219,25 +104,24 @@ namespace ProjeX.Application.Project
             if (client == null)
                 throw new InvalidOperationException("Client not found");
 
+            // Update basic properties
             entity.ProjectName = command.ProjectName;
             entity.ClientId = command.ClientId;
             entity.StartDate = command.StartDate;
             entity.EndDate = command.EndDate;
             entity.Budget = command.Budget;
             entity.ProjectPrice = command.ProjectPrice;
-
-            try
-            {
-                _context.Entry(entity).Property("ExpectedWorkingPeriodMonths").CurrentValue =
-                    Convert.ToInt32(Math.Round(command.ExpectedWorkingPeriodMonths));
-            }
-            catch
-            {
-                entity.ExpectedWorkingPeriodMonths = command.ExpectedWorkingPeriodMonths;
-            }
-
+            entity.ExpectedWorkingPeriodMonths = command.ExpectedWorkingPeriodMonths;
             entity.Status = command.Status;
-            entity.Notes = command.Notes;
+            entity.Notes = command.Notes ?? string.Empty;
+
+            // Update contract value if it wasn't set before
+            if (entity.ContractValue == 0)
+            {
+                entity.ContractValue = command.ProjectPrice;
+            }
+
+            // Update audit fields
             entity.ModifiedBy = userId;
             entity.ModifiedAt = DateTime.UtcNow;
 
@@ -277,26 +161,18 @@ namespace ProjeX.Application.Project
                 throw new InvalidOperationException("End date must be after start date.");
             }
 
-            decimal expectedPeriod;
-            try
-            {
-                var intValue = _context.Entry(project).Property("ExpectedWorkingPeriodMonths").CurrentValue;
-                expectedPeriod = Convert.ToDecimal(intValue);
-            }
-            catch
-            {
-                expectedPeriod = project.ExpectedWorkingPeriodMonths;
-            }
-
             var actualMonths = (decimal)((command.EndDate - command.StartDate).Days / 30.0);
-            if (Math.Abs(actualMonths - expectedPeriod) > (expectedPeriod * 0.5m))
+            if (Math.Abs(actualMonths - project.ExpectedWorkingPeriodMonths) > (project.ExpectedWorkingPeriodMonths * 0.5m))
             {
-                throw new InvalidOperationException($"Actual project period ({actualMonths:F1} months) deviates significantly from expected period ({expectedPeriod} months). Please review the dates or expected period.");
+                throw new InvalidOperationException($"Actual project period ({actualMonths:F1} months) deviates significantly from expected period ({project.ExpectedWorkingPeriodMonths} months). Please review the dates or expected period.");
             }
 
             project.StartDate = command.StartDate;
             project.EndDate = command.EndDate;
             project.Status = ProjectStatus.InProgress;
+            project.IsApproved = true;
+            project.ApprovedAt = command.ApprovedDate;
+            // Note: ApprovedById would need to be set if we have the approver's employee ID
 
             var approvalNote = string.IsNullOrEmpty(command.ApprovalNotes)
                 ? $"Project approved and started on {command.ApprovedDate:yyyy-MM-dd}"
@@ -311,24 +187,7 @@ namespace ProjeX.Application.Project
 
             await _context.SaveChangesAsync();
 
-            return new ProjectDto
-            {
-                Id = project.Id,
-                ProjectName = project.ProjectName,
-                ClientId = project.ClientId,
-                ClientName = project.Client.ClientName,
-                StartDate = project.StartDate,
-                EndDate = project.EndDate,
-                Budget = project.Budget,
-                ProjectPrice = project.ProjectPrice,
-                ExpectedWorkingPeriodMonths = expectedPeriod,
-                Status = project.Status,
-                Notes = project.Notes,
-                CreatedBy = project.CreatedBy,
-                CreatedAt = project.CreatedAt,
-                ModifiedBy = project.ModifiedBy,
-                ModifiedAt = project.ModifiedAt
-            };
+            return _mapper.Map<ProjectDto>(project);
         }
     }
 }

@@ -15,124 +15,128 @@
     <div class="row">
         <div class="col">
             <div class="d-flex justify-content-between align-items-center mb-4">
-     <h2><i class="fas fa-route me-2"></i>Project Paths</h2>
-       <div>
-         <select value="@selectedProjectId" @onchange="LoadPaths" class="form-select d-inline-block me-2" style="width: auto;">
-         <option value="">All Projects</option>
-     @if (projects != null)
-                 {
-      @foreach (var project in projects)
-           {
-    <option value="@project.Id">@project.ProjectName</option>
-       }
-   }
-      </select>
-  <button class="btn btn-primary" @onclick="ShowCreateModal">
-         <i class="fas fa-plus me-2"></i>Add Path
-    </button>
-         </div>
-   </div>
+                <h2><i class="fas fa-route me-2"></i>Project Paths</h2>
+                <div>
+                    <select value="@selectedProjectId" @onchange="LoadPaths" class="form-select d-inline-block me-2" style="width: auto;">
+                        <option value="">All Projects</option>
+                        @if (projects != null)
+                        {
+                            @foreach (var project in projects)
+                            {
+                                <option value="@project.Id">@project.ProjectName</option>
+                            }
+                        }
+                    </select>
+                    <button class="btn btn-primary" @onclick="ShowCreateModal">
+                        <i class="fas fa-plus me-2"></i>Add Path
+                    </button>
+                </div>
+            </div>
 
-     @if (isLoading)
+            @if (isLoading)
             {
-       <div class="text-center">
-  <div class="spinner-border" role="status">
-     <span class="visually-hidden">Loading...</span>
-         </div>
-  </div>
- }
-      else if (paths != null && paths.Any())
-   {
-  <div class="row">
-       @foreach (var path in paths)
-           {
-    <div class="col-lg-6 col-xl-4 mb-4">
-      <div class="card h-100">
-    <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0">@path.Name</h5>
-      <div class="dropdown">
-           <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-    <i class="fas fa-ellipsis-v"></i>
-       </button>
-      <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" @onclick="() => ShowEditModal(path)">
-          <i class="fas fa-edit me-2"></i>Edit
-        </a></li>
-        <li><a class="dropdown-item text-danger" href="#" @onclick="() => ShowDeleteModal(path)">
-        <i class="fas fa-trash me-2"></i>Delete
-          </a></li>
-              </ul>
-      </div>
-                 </div>
-    <div class="card-body">
-   <div class="row mb-3">
-      <div class="col-sm-6">
-     <small class="text-muted">Project</small>
-   <div class="fw-bold">@projects?.FirstOrDefault(p => p.Id == path.ProjectId)?.ProjectName</div>
-         </div>
-  <div class="col-sm-6">
-       <small class="text-muted">Owner</small>
-          <div class="fw-bold">@(string.IsNullOrEmpty(path.OwnerName) ? "Unassigned" : path.OwnerName)</div>
-       </div>
-</div>
-       
-         @if (!string.IsNullOrEmpty(path.Objective))
-    {
-         <div class="mb-3">
-        <small class="text-muted">Objective</small>
-        <p class="small mb-0">@path.Objective</p>
-      </div>
-              }
-   
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (paths != null && paths.Any())
+            {
                 <div class="row">
-  <div class="col-sm-6">
-         <small class="text-muted">Allocation</small>
-              <div class="fw-bold">@path.AllowedAllocationPercentage%</div>
-             </div>
- <div class="col-sm-6">
-         <small class="text-muted">Planned Cost</small>
-        <div class="fw-bold">@path.PlannedCost.ToString("C")</div>
-         </div>
-             </div>
-            
-               <div class="row mt-2">
-  <div class="col-sm-4">
-     <small class="text-muted">Deliverables</small>
-        <div class="fw-bold">@path.DeliverablesCount</div>
-      </div>
-<div class="col-sm-4">
-  <small class="text-muted">Team Slots</small>
-       <div class="fw-bold">@path.PlannedTeamSlotsCount</div>
-      </div>
-      <div class="col-sm-4">
-                 <small class="text-muted">Budget</small>
-  <div class="fw-bold">@path.TotalBudgetAmount.ToString("C")</div>
- </div>
-    </div>
-           </div>
-           <div class="card-footer d-flex justify-content-between align-items-center">
-      <span class="badge bg-@(path.IsActive ? "success" : "secondary")">
-           @(path.IsActive ? "Active" : "Inactive")
-        </span>
-          <small class="text-muted">
-    Created @path.CreatedAt.ToString("MMM dd, yyyy")
-        </small>
-  </div>
-    </div>
-                 </div>
-      }
-  </div>
+                    @foreach (var path in paths)
+                    {
+                        <div class="col-lg-6 col-xl-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">@path.Name</h5>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" @onclick="() => ShowEditModal(path)">
+                                                    <i class="fas fa-edit me-2"></i>Edit
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" @onclick="() => ShowDeleteModal(path)">
+                                                    <i class="fas fa-trash me-2"></i>Delete
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-sm-6">
+                                            <small class="text-muted">Project</small>
+                                            <div class="fw-bold">@projects?.FirstOrDefault(p => p.Id == path.ProjectId)?.ProjectName</div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <small class="text-muted">Owner</small>
+                                            <div class="fw-bold">@(string.IsNullOrEmpty(path.OwnerName) ? "Unassigned" : path.OwnerName)</div>
+                                        </div>
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(path.Objective))
+                                    {
+                                        <div class="mb-3">
+                                            <small class="text-muted">Objective</small>
+                                            <p class="small mb-0">@path.Objective</p>
+                                        </div>
+                                    }
+
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <small class="text-muted">Allocation</small>
+                                            <div class="fw-bold">@path.AllowedAllocationPercentage%</div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <small class="text-muted">Planned Cost</small>
+                                            <div class="fw-bold">@path.PlannedCost.ToString("C")</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-2">
+                                        <div class="col-sm-4">
+                                            <small class="text-muted">Deliverables</small>
+                                            <div class="fw-bold">@path.DeliverablesCount</div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <small class="text-muted">Team Slots</small>
+                                            <div class="fw-bold">@path.PlannedTeamSlotsCount</div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <small class="text-muted">Budget</small>
+                                            <div class="fw-bold">@path.TotalBudgetAmount.ToString("C")</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-@(path.IsActive ? "success" : "secondary")">
+                                        @(path.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                    <small class="text-muted">
+                                        Created @path.CreatedAt.ToString("MMM dd, yyyy")
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
             else
-      {
-          <div class="text-center py-5">
- <i class="fas fa-route fa-3x text-muted mb-3"></i>
-         <h4 class="text-muted">No paths found</h4>
-             <p class="text-muted">Create your first path to start organizing project deliverables.</p>
-        <button class="btn btn-primary" @onclick="ShowCreateModal">
-                <i class="fas fa-plus me-2"></i>Create Path
-               </button>
-           </div>
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No paths found</h4>
+                    <p class="text-muted">Create your first path to start organizing project deliverables.</p>
+                    <button class="btn btn-primary" @onclick="ShowCreateModal">
+                        <i class="fas fa-plus me-2"></i>Create Path
+                    </button>
+                </div>
             }
         </div>
     </div>
@@ -142,104 +146,104 @@
 <div class="modal fade @(showModal ? "show d-block" : "")" tabindex="-1" style="@(showModal ? "background-color: rgba(0,0,0,0.5);" : "")">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-       <div class="modal-header">
-<h5 class="modal-title">@(isEdit ? "Edit Path" : "Create New Path")</h5>
-          <button type="button" class="btn-close" @onclick="HideModal"></button>
-   </div>
-       <EditForm Model="@pathRequest" OnValidSubmit="@HandleSubmit">
-     <DataAnnotationsValidator />
-           <div class="modal-body">
-   <div class="row">
-       <div class="col-md-8">
-       <div class="mb-3">
-           <label class="form-label">Name *</label>
-    <InputText @bind-Value="pathRequest.Name" class="form-control" placeholder="Enter path name" />
-        <ValidationMessage For="@(() => pathRequest.Name)" />
-           </div>
-    </div>
-                 <div class="col-md-4">
-        <div class="mb-3">
-                  <label class="form-label">Project *</label>
-       <InputSelect @bind-Value="pathRequest.ProjectId" class="form-select">
-  <option value="">Select project...</option>
-                  @if (projects != null)
-         {
-     @foreach (var project in projects)
-         {
-                <option value="@project.Id">@project.ProjectName</option>
- }
-           }
-          </InputSelect>
-      <ValidationMessage For="@(() => pathRequest.ProjectId)" />
+            <div class="modal-header">
+                <h5 class="modal-title">@(isEdit ? "Edit Path" : "Create New Path")</h5>
+                <button type="button" class="btn-close" @onclick="HideModal"></button>
             </div>
-        </div>
-     </div>
+            <EditForm Model="@pathRequest" OnValidSubmit="@HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">Name *</label>
+                                <InputText @bind-Value="pathRequest.Name" class="form-control" placeholder="Enter path name" />
+                                <ValidationMessage For="@(() => pathRequest.Name)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Project *</label>
+                                <InputSelect @bind-Value="pathRequest.ProjectId" class="form-select">
+                                    <option value="">Select project...</option>
+                                    @if (projects != null)
+                                    {
+                                        @foreach (var project in projects)
+                                        {
+                                            <option value="@project.Id">@project.ProjectName</option>
+                                        }
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => pathRequest.ProjectId)" />
+                            </div>
+                        </div>
+                    </div>
 
-           <div class="row">
-            <div class="col-md-6">
-                 <div class="mb-3">
-         <label class="form-label">Allocation Percentage</label>
-     <InputNumber @bind-Value="pathRequest.AllowedAllocationPercentage" class="form-control" min="0" max="100" step="0.1" />
-        <ValidationMessage For="@(() => pathRequest.AllowedAllocationPercentage)" />
-         </div>
-             </div>
-          </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Allocation Percentage</label>
+                                <InputNumber @bind-Value="pathRequest.AllowedAllocationPercentage" class="form-control" min="0" max="100" step="0.1" />
+                                <ValidationMessage For="@(() => pathRequest.AllowedAllocationPercentage)" />
+                            </div>
+                        </div>
+                    </div>
 
-      <div class="mb-3">
-            <label class="form-label">Objective</label>
-            <InputTextArea @bind-Value="pathRequest.Objective" class="form-control" rows="3" placeholder="Describe the path objective" />
-        <ValidationMessage For="@(() => pathRequest.Objective)" />
-        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Objective</label>
+                        <InputTextArea @bind-Value="pathRequest.Objective" class="form-control" rows="3" placeholder="Describe the path objective" />
+                        <ValidationMessage For="@(() => pathRequest.Objective)" />
+                    </div>
 
-           <div class="row">
-<div class="col-md-6">
-  <div class="mb-3">
-              <label class="form-label">Planned Cost</label>
-            <InputNumber @bind-Value="pathRequest.PlannedCost" class="form-control" min="0" step="0.01" />
- <ValidationMessage For="@(() => pathRequest.PlannedCost)" />
-      </div>
-    </div>
-      <div class="col-md-6">
-             <div class="mb-3">
-      <label class="form-label">Owner</label>
-                <select @bind="pathRequest.OwnerId" class="form-select">
-   <option value="">Select owner...</option>
-        @if (employees != null)
-         {
-           @foreach (var employee in employees)
-            {
-       <option value="@employee.Id">@employee.FullName</option>
-          }
-         }
-       </select>
-   </div>
-          </div>
-    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Planned Cost</label>
+                                <InputNumber @bind-Value="pathRequest.PlannedCost" class="form-control" min="0" step="0.01" />
+                                <ValidationMessage For="@(() => pathRequest.PlannedCost)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Owner</label>
+                                <select @bind="pathRequest.OwnerId" class="form-select">
+                                    <option value="">Select owner...</option>
+                                    @if (employees != null)
+                                    {
+                                        @foreach (var employee in employees)
+                                        {
+                                            <option value="@employee.Id">@employee.FullName</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-          <div class="mb-3">
-     <label class="form-label">Notes</label>
- <InputTextArea @bind-Value="pathRequest.Notes" class="form-control" rows="2" placeholder="Additional notes" />
-        <ValidationMessage For="@(() => pathRequest.Notes)" />
-         </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <InputTextArea @bind-Value="pathRequest.Notes" class="form-control" rows="2" placeholder="Additional notes" />
+                        <ValidationMessage For="@(() => pathRequest.Notes)" />
+                    </div>
 
-        @if (isEdit)
-      {
-        <div class="mb-3 form-check">
-  <InputCheckbox @bind-Value="pathRequest.IsActive" class="form-check-input" id="isActive" />
-         <label class="form-check-label" for="isActive">Active</label>
-       </div>
-   }
-           </div>
-   <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @onclick="HideModal">Cancel</button>
-     <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-        @if (isSubmitting)
-      {
-         <span class="spinner-border spinner-border-sm me-2"></span>
-    }
-     @(isEdit ? "Update" : "Create")
-         </button>
-         </div>
+                    @if (isEdit)
+                    {
+                        <div class="mb-3 form-check">
+                            <InputCheckbox @bind-Value="pathRequest.IsActive" class="form-check-input" id="isActive" />
+                            <label class="form-check-label" for="isActive">Active</label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        @(isEdit ? "Update" : "Create")
+                    </button>
+                </div>
             </EditForm>
         </div>
     </div>
@@ -257,55 +261,55 @@
     private bool isSubmitting = false;
     private string selectedProjectId = string.Empty;
 
-    protected override async System.Threading.Tasks.Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         await LoadProjects();
         await LoadEmployees();
         await LoadPaths();
     }
 
-    private async System.Threading.Tasks.Task LoadPaths()
+    private async Task LoadPaths()
     {
-      isLoading = true;
+        isLoading = true;
         try
-   {
+        {
             if (!string.IsNullOrEmpty(selectedProjectId) && Guid.TryParse(selectedProjectId, out var projectId))
             {
- paths = (await PathService.GetByProjectIdAsync(projectId)).ToList();
+                paths = (await PathService.GetByProjectIdAsync(projectId)).ToList();
             }
-       else
+            else
             {
-      paths = (await PathService.GetAllAsync()).ToList();
-        }
+                paths = (await PathService.GetAllAsync()).ToList();
+            }
         }
         catch (Exception ex)
         {
-        Console.WriteLine($"Error loading paths: {ex.Message}");
+            Console.WriteLine($"Error loading paths: {ex.Message}");
             paths = new List<PathDto>();
         }
-   finally
+        finally
         {
-   isLoading = false;
-  }
+            isLoading = false;
+        }
     }
 
     private async System.Threading.Tasks.Task LoadProjects()
     {
-  try
+        try
         {
-     projects = (await ProjectService.GetAllAsync()).ToList();
+            projects = (await ProjectService.GetAllAsync()).ToList();
         }
-      catch (Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"Error loading projects: {ex.Message}");
         }
- }
+    }
 
     private async System.Threading.Tasks.Task LoadEmployees()
     {
-  try
+        try
         {
-   employees = (await EmployeeService.GetAllAsync()).ToList();
+            employees = (await EmployeeService.GetAllAsync()).ToList();
         }
         catch (Exception ex)
         {
@@ -318,39 +322,39 @@
         isEdit = false;
         pathRequest = new CreatePathRequest
         {
-    ProjectId = !string.IsNullOrEmpty(selectedProjectId) && Guid.TryParse(selectedProjectId, out var projectId) ? projectId : Guid.Empty
+            ProjectId = !string.IsNullOrEmpty(selectedProjectId) && Guid.TryParse(selectedProjectId, out var projectId) ? projectId : Guid.Empty
         };
         showModal = true;
     }
 
     private void ShowEditModal(PathDto path)
     {
-    isEdit = true;
-  pathRequest = new CreatePathRequest // Use CreatePathRequest for form binding
+        isEdit = true;
+        pathRequest = new CreatePathRequest // Use CreatePathRequest for form binding
         {
             Name = path.Name,
             ProjectId = path.ProjectId,
             Objective = path.Objective,
-   AllowedAllocationPercentage = path.AllowedAllocationPercentage,
-       PlannedCost = path.PlannedCost,
-  OwnerId = path.OwnerId,
+            AllowedAllocationPercentage = path.AllowedAllocationPercentage,
+            PlannedCost = path.PlannedCost,
+            OwnerId = path.OwnerId,
             Notes = path.Notes,
-          IsActive = path.IsActive
-      };
+            IsActive = path.IsActive
+        };
 
         updateRequest = new UpdatePathRequest
- {
+        {
             Id = path.Id,
             Name = path.Name,
-     ProjectId = path.ProjectId,
-    Objective = path.Objective,
+            ProjectId = path.ProjectId,
+            Objective = path.Objective,
             AllowedAllocationPercentage = path.AllowedAllocationPercentage,
-         PlannedCost = path.PlannedCost,
-        OwnerId = path.OwnerId,
-       Notes = path.Notes,
-       IsActive = path.IsActive
+            PlannedCost = path.PlannedCost,
+            OwnerId = path.OwnerId,
+            Notes = path.Notes,
+            IsActive = path.IsActive
         };
-        
+
         showModal = true;
     }
 
@@ -359,49 +363,49 @@
         isSubmitting = true;
         try
         {
-if (isEdit)
-       {
-        // Copy values from pathRequest to updateRequest
-        updateRequest.Name = pathRequest.Name;
-          updateRequest.ProjectId = pathRequest.ProjectId;
-        updateRequest.Objective = pathRequest.Objective;
- updateRequest.AllowedAllocationPercentage = pathRequest.AllowedAllocationPercentage;
-          updateRequest.PlannedCost = pathRequest.PlannedCost;
-     updateRequest.OwnerId = pathRequest.OwnerId;
-   updateRequest.Notes = pathRequest.Notes;
-    updateRequest.IsActive = pathRequest.IsActive;
-           
-       await PathService.UpdateAsync(updateRequest);
-}
-            else
-     {
-          await PathService.CreateAsync(pathRequest);
-}
+            if (isEdit)
+            {
+                // Copy values from pathRequest to updateRequest
+                updateRequest.Name = pathRequest.Name;
+                updateRequest.ProjectId = pathRequest.ProjectId;
+                updateRequest.Objective = pathRequest.Objective;
+                updateRequest.AllowedAllocationPercentage = pathRequest.AllowedAllocationPercentage;
+                updateRequest.PlannedCost = pathRequest.PlannedCost;
+                updateRequest.OwnerId = pathRequest.OwnerId;
+                updateRequest.Notes = pathRequest.Notes;
+                updateRequest.IsActive = pathRequest.IsActive;
 
-      await LoadPaths();
-     HideModal();
+                await PathService.UpdateAsync(updateRequest);
+            }
+            else
+            {
+                await PathService.CreateAsync(pathRequest);
+            }
+
+            await LoadPaths();
+            HideModal();
         }
         catch (Exception ex)
         {
-   Console.WriteLine($"Error saving path: {ex.Message}");
-}
-      finally
+            Console.WriteLine($"Error saving path: {ex.Message}");
+        }
+        finally
         {
-    isSubmitting = false;
-  }
+            isSubmitting = false;
+        }
     }
 
     private void HideModal()
     {
         showModal = false;
-      pathRequest = new CreatePathRequest();
-    updateRequest = new UpdatePathRequest();
+        pathRequest = new CreatePathRequest();
+        updateRequest = new UpdatePathRequest();
     }
 
     // Additional helper methods would be here...
     private void ShowDeleteModal(PathDto path)
     {
-     // Implementation for delete modal
+        // Implementation for delete modal
     }
 }
 

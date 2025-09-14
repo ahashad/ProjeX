@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace ProjeX.Blazor.Controllers
 {
@@ -70,7 +71,8 @@ namespace ProjeX.Blazor.Controllers
         {
             try
             {
-                var created = await _clientService.CreateAsync(command);
+                var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+                var created = await _clientService.CreateAsync(command, userId);
                 return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
             }
             catch (Exception ex)
@@ -93,7 +95,8 @@ namespace ProjeX.Blazor.Controllers
 
             try
             {
-                await _clientService.UpdateAsync(command);
+                var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+                await _clientService.UpdateAsync(command, userId);
                 return NoContent();
             }
             catch (Exception ex)

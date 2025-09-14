@@ -83,8 +83,8 @@ namespace ProjeX.Application.Reporting
             {
                 var budgetAllocated = project.Budgets.Sum(b => b.AllocatedAmount);
                 var budgetSpent = project.Budgets.Sum(b => b.SpentAmount);
-                var deliverableProgress = project.Deliverables.Any() 
-                    ? project.Deliverables.Average(d => (double)d.ProgressPercentage) 
+                var deliverableProgress = project.Deliverables.Any()
+                    ? project.Deliverables.Average(d => (double)d.ProgressPercentage)
                     : 0;
 
                 var performance = new ProjectPerformanceDto
@@ -100,9 +100,9 @@ namespace ProjeX.Application.Reporting
                     BudgetSpent = budgetSpent,
                     BudgetVariance = budgetAllocated - budgetSpent,
                     BudgetVariancePercent = budgetAllocated > 0 ? ((budgetAllocated - budgetSpent) / budgetAllocated) * 100 : 0,
-                    ScheduleVarianceDays = project.ActualEndDate.HasValue ? 
-     (project.ActualEndDate.Value - project.EndDate).Days :
-          (DateTime.UtcNow - project.EndDate).Days,
+                    ScheduleVarianceDays = (project.ActualEndDate.HasValue ?
+     (project.ActualEndDate.Value - project.EndDate)?.Days :
+          (DateTime.UtcNow - project.EndDate)?.Days) ?? 0,
                     ProgressPercent = (int)Math.Round(deliverableProgress),
                     TeamSize = project.ActualAssignments.Count(a => a.Status == AssignmentStatus.Active),
                     IsOnTrack = deliverableProgress >= 80 && budgetSpent <= budgetAllocated * 0.9m
@@ -136,7 +136,7 @@ namespace ProjeX.Application.Reporting
                 EmployeeUtilization = new List<EmployeeUtilizationDto>()
             };
 
-foreach (var employee in employees)
+            foreach (var employee in employees)
             {
                 var assignments = employee.ActualAssignments
                     .Where(a => a.Status == AssignmentStatus.Active &&
@@ -200,27 +200,27 @@ foreach (var employee in employees)
             var report = new FinancialReportDto
             {
                 ReportPeriod = $"{fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}",
-                
+
                 // Revenue Metrics
                 TotalRevenue = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount),
                 PendingRevenue = invoices.Where(i => i.Status == InvoiceStatus.Sent).Sum(i => i.TotalAmount),
                 OverdueRevenue = invoices.Where(i => i.Status == InvoiceStatus.Overdue).Sum(i => i.TotalAmount),
-                
+
                 // Expense Metrics
                 TotalExpenses = vendorInvoices.Where(vi => vi.Status == VendorInvoiceStatus.Paid).Sum(vi => vi.TotalAmount),
                 PendingExpenses = vendorInvoices.Where(vi => vi.Status == VendorInvoiceStatus.PendingPayment).Sum(vi => vi.TotalAmount),
-                
+
                 // Budget Metrics
                 TotalBudgetAllocated = budgets.Sum(b => b.AllocatedAmount),
                 TotalBudgetSpent = budgets.Sum(b => b.SpentAmount),
-                BudgetUtilizationPercent = budgets.Sum(b => b.AllocatedAmount) > 0 
-                    ? (budgets.Sum(b => b.SpentAmount) / budgets.Sum(b => b.AllocatedAmount)) * 100 
+                BudgetUtilizationPercent = budgets.Sum(b => b.AllocatedAmount) > 0
+                    ? (budgets.Sum(b => b.SpentAmount) / budgets.Sum(b => b.AllocatedAmount)) * 100
                     : 0,
-                
+
                 // Profitability
-                GrossProfit = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount) - 
+                GrossProfit = invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.TotalAmount) -
                              vendorInvoices.Where(vi => vi.Status == VendorInvoiceStatus.Paid).Sum(vi => vi.TotalAmount),
-                
+
                 // Monthly Breakdown
                 MonthlyBreakdown = await GetMonthlyFinancialBreakdownAsync(fromDate, toDate)
             };
@@ -300,8 +300,8 @@ foreach (var employee in employees)
             var nextMonth = currentMonth.AddMonths(1);
 
             return await _context.Invoices
-                .Where(i => i.InvoiceDate >= currentMonth && 
-                           i.InvoiceDate < nextMonth && 
+                .Where(i => i.InvoiceDate >= currentMonth &&
+                           i.InvoiceDate < nextMonth &&
                            i.Status == InvoiceStatus.Paid)
                 .SumAsync(i => i.TotalAmount);
         }
@@ -352,7 +352,7 @@ foreach (var employee in employees)
                     : 100;
 
                 var schedulePerformance = p.ActualEndDate.HasValue
-                    ? Math.Min(100, (p.EndDate - p.ActualEndDate.Value).Days + 100)
+                    ? Math.Min(100, (p.EndDate - p.ActualEndDate.Value)?.Days ?? 0 + 100)
                     : 100;
 
                 return (budgetPerformance + schedulePerformance) / 2;

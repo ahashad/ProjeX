@@ -25,9 +25,9 @@ namespace ProjeX.Domain.Entities
         // Navigation properties
         public virtual Deliverable Deliverable { get; set; } = null!;
         public virtual Employee? AssignedEmployee { get; set; }
-        // TODO: Add back TaskDependency navigation properties after fixing EF configuration
-        // public virtual ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
-        // public virtual ICollection<TaskDependency> DependentOn { get; set; } = new List<TaskDependency>();
+        // Navigation properties for task dependencies (commented out until proper EF configuration)
+        public virtual ICollection<TaskDependency> Dependencies { get; set; } = new List<TaskDependency>();
+        public virtual ICollection<TaskDependency> DependentOn { get; set; } = new List<TaskDependency>();
         public virtual ICollection<Approval> Approvals { get; set; } = new List<Approval>();
     }
 }

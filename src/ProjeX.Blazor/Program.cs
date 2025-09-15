@@ -20,6 +20,7 @@ using ProjeX.Application.Payment;
 using ProjeX.Application.Reports;
 using ProjeX.Application.Path;
 using ProjeX.Application.Budget;
+using ProjeX.Application.ResourceUtilization;
 using ProjeX.Domain.Interfaces;
 using ProjeX.Infrastructure.Services;
 using ProjeX.Infrastructure.Interceptors;
@@ -113,6 +114,7 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPathService, PathService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IUtilizationService, UtilizationService>();
 
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 

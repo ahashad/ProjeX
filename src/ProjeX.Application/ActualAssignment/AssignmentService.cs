@@ -21,7 +21,7 @@ namespace ProjeX.Application.ActualAssignment
         public async Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId)
         {
             var result = new AssignmentCreationResult();
-            
+
             // Validate project exists
             var project = await _context.Projects.FindAsync(command.ProjectId);
             if (project == null)
@@ -30,17 +30,32 @@ namespace ProjeX.Application.ActualAssignment
             }
 
             // Validate employee exists
-            var employee = await _context.Employees.FindAsync(command.EmployeeId);
+            var employee = await _context.Employees
+                .Include(e => e.Role)
+                .FirstOrDefaultAsync(e => e.Id == command.EmployeeId);
             if (employee == null)
             {
                 throw new ArgumentException("Employee not found");
             }
 
             // Validate planned team slot exists
-            var plannedTeamSlot = await _context.PlannedTeamSlots.FindAsync(command.PlannedTeamSlotId);
+            var plannedTeamSlot = await _context.PlannedTeamSlots
+                .Include(pts => pts.Role)
+                .FirstOrDefaultAsync(pts => pts.Id == command.PlannedTeamSlotId);
             if (plannedTeamSlot == null)
             {
                 throw new ArgumentException("Planned team slot not found");
+            }
+
+            // Perform pre-assignment checks according to implementation plan
+            var preCheckResult = await PerformPreAssignmentChecksAsync(command, project, employee, plannedTeamSlot);
+            result.Warnings.AddRange(preCheckResult.Warnings);
+
+            if (preCheckResult.HasBlockers)
+            {
+                result.IsSuccessful = false;
+                result.Errors.AddRange(preCheckResult.Blockers);
+                return result;
             }
 
             // Create assignment
@@ -48,8 +63,11 @@ namespace ProjeX.Application.ActualAssignment
             {
                 Id = Guid.NewGuid(),
                 ProjectId = command.ProjectId,
+                Project = project,
                 PlannedTeamSlotId = command.PlannedTeamSlotId,
+                PlannedTeamSlot = plannedTeamSlot,
                 EmployeeId = command.EmployeeId,
+                Employee = employee,
                 AssigneeType = AssigneeType.Employee,
                 StartDate = command.StartDate,
                 EndDate = command.EndDate,
@@ -60,14 +78,27 @@ namespace ProjeX.Application.ActualAssignment
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 ModifiedBy = userId,
-                ModifiedAt = DateTime.UtcNow
+                ModifiedAt = DateTime.UtcNow,
+
+                // Set warning flags from validation
+                CostCheckWarning = preCheckResult.HasCostVariance,
+                CostDifferenceAmount = preCheckResult.CostVarianceAmount,
+                CostDifferencePercentage = preCheckResult.CostVariancePercentage,
+                UtilizationWarning = preCheckResult.HasUtilizationWarning,
+                RoleMismatchWarning = preCheckResult.HasRoleMismatch,
+                RequiresApproval = preCheckResult.RequiresApproval
             };
+
+            // Establish navigation property relationships
+            project.ActualAssignments.Add(assignment);
+            employee.ActualAssignments.Add(assignment);
 
             _context.ActualAssignments.Add(assignment);
             await _context.SaveChangesAsync();
 
             var assignmentDto = await GetByIdAsync(assignment.Id);
             result.Assignment = assignmentDto;
+            result.IsSuccessful = true;
             return result;
         }
 
@@ -199,6 +230,119 @@ namespace ProjeX.Application.ActualAssignment
                     AllocationPercent = allocation
                 });
             }
+
+            return result;
+        }
+
+        private async Task<AssignmentPreCheckResult> PerformPreAssignmentChecksAsync(
+            CreateActualAssignmentCommand command,
+            Domain.Entities.Project project,
+            Domain.Entities.Employee employee,
+            Domain.Entities.PlannedTeamSlot plannedTeamSlot)
+        {
+            var result = new AssignmentPreCheckResult();
+
+            // Validation 0: Allocation must be positive
+            if (command.AllocationPercent <= 0)
+            {
+                result.Blockers.Add("Assignment allocation must be greater than 0%");
+            }
+
+            // Validation 1: Dates within project start/end
+            if (command.StartDate < project.StartDate)
+            {
+                result.Blockers.Add("Assignment start date cannot be before project start date");
+            }
+            if (command.StartDate > project.EndDate)
+            {
+                result.Blockers.Add("Assignment start date must be within project date range");
+            }
+
+            if (command.EndDate.HasValue && command.EndDate.Value > project.EndDate)
+            {
+                result.Blockers.Add("Assignment end date cannot be after project end date");
+            }
+
+            // Validation 1b: Start date must be before end date
+            if (command.EndDate.HasValue && command.StartDate > command.EndDate.Value)
+            {
+                result.Blockers.Add("Assignment start date must be before or equal to end date");
+            }
+
+            // Validation 2: Slot allocation doesn't exceed AllowedAllocation%
+            var existingSlotAllocations = await _context.ActualAssignments
+                .Where(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&
+                            !aa.IsDeleted &&
+                            (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned))
+                .SumAsync(aa => aa.AllocationPercent);
+
+            var totalSlotAllocation = existingSlotAllocations + command.AllocationPercent;
+            if (totalSlotAllocation > plannedTeamSlot.AllocationPercent)
+            {
+                result.Blockers.Add($"Assignment allocation ({command.AllocationPercent}%) exceeds planned slot allocation ({plannedTeamSlot.AllocationPercent}%)");
+            }
+
+            // Validation 3: Employee allocation doesn't exceed 100% across projects
+            var endDate = command.EndDate ?? project.EndDate;
+            var employeeAllocations = await _context.ActualAssignments
+                .Where(aa => aa.EmployeeId == command.EmployeeId &&
+                            !aa.IsDeleted &&
+                            (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned) &&
+                            aa.StartDate <= endDate &&
+                            (aa.EndDate == null || aa.EndDate >= command.StartDate))
+                .SumAsync(aa => aa.AllocationPercent);
+
+            var totalEmployeeAllocation = employeeAllocations + command.AllocationPercent;
+            if (totalEmployeeAllocation > 100)
+            {
+                result.Blockers.Add($"Employee total allocation ({totalEmployeeAllocation}%) would exceed 100%");
+            }
+            else if (totalEmployeeAllocation > 80)
+            {
+                result.Warnings.Add($"Employee will have high utilization ({totalEmployeeAllocation}%) during assignment period");
+                result.HasUtilizationWarning = true;
+            }
+
+            // Validation 4: Check for overlapping assignments
+            var overlappingAssignments = await _context.ActualAssignments
+                .Where(aa => aa.EmployeeId == command.EmployeeId &&
+                            !aa.IsDeleted &&
+                            (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned) &&
+                            aa.StartDate <= endDate &&
+                            (aa.EndDate == null || aa.EndDate >= command.StartDate))
+                .CountAsync();
+
+            if (overlappingAssignments > 0)
+            {
+                result.Warnings.Add($"Employee has {overlappingAssignments} overlapping assignment(s) during this period");
+            }
+
+            // Validation 5: Role mismatch check
+            if (employee.RoleId != plannedTeamSlot.RoleId)
+            {
+                var employeeRole = employee.Role?.RoleName ?? "Unknown";
+                var plannedRole = plannedTeamSlot.Role?.RoleName ?? "Unknown";
+                result.Blockers.Add($"Employee role ({employeeRole}) does not match planned slot role");
+                result.HasRoleMismatch = true;
+            }
+
+            // Warning 6: Cost variance check
+            var plannedMonthlyCost = plannedTeamSlot.PlannedMonthlyCost > 0 ? plannedTeamSlot.PlannedMonthlyCost : (plannedTeamSlot.PlannedSalary + plannedTeamSlot.PlannedIncentive);
+            var actualMonthlyCost = (employee.Salary / 12m) + employee.MonthlyIncentive;
+            var costDifference = actualMonthlyCost - plannedMonthlyCost;
+            var costDifferencePercent = plannedMonthlyCost > 0 ? (costDifference / plannedMonthlyCost) * 100 : 0;
+
+            result.CostVarianceAmount = costDifference;
+            result.CostVariancePercentage = costDifferencePercent;
+
+            if (Math.Abs(costDifferencePercent) > 10)
+            {
+                result.Warnings.Add($"Cost variance: {costDifferencePercent:F1}% ({(costDifference > 0 ? "over" : "under")} budget by {Math.Abs(costDifference):C})");
+                result.HasCostVariance = true;
+            }
+
+            // Determine if approval is required
+            result.RequiresApproval = result.HasRoleMismatch || result.HasCostVariance || Math.Abs(costDifferencePercent) > 20;
 
             return result;
         }

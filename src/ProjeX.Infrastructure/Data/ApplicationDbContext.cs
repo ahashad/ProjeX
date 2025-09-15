@@ -30,8 +30,7 @@ namespace ProjeX.Infrastructure.Data
 
         // Additional DbSets that were missing
         public DbSet<Domain.Entities.Task> Tasks { get; set; }
-        // TODO: Add back TaskDependency after fixing EF configuration
-        // public DbSet<TaskDependency> TaskDependencies { get; set; }
+        public DbSet<TaskDependency> TaskDependencies { get; set; }
  public DbSet<Account> Accounts { get; set; }
    public DbSet<Opportunity> Opportunities { get; set; }
         public DbSet<OpportunityActivity> OpportunityActivities { get; set; }
@@ -108,9 +107,30 @@ namespace ProjeX.Infrastructure.Data
             builder.Entity<PlannedTeamSlot>().Property(pts => pts.PlannedIncentive).HasColumnType("decimal(18,2)");
             builder.Entity<PlannedTeamSlot>().Property(pts => pts.PlannedCommissionPercent).HasColumnType("decimal(5,2)");
             builder.Entity<PlannedTeamSlot>().Property(pts => pts.ComputedBudgetCost).HasColumnType("decimal(18,2)");
-            builder.Entity<PlannedTeamSlot>().HasOne(pts => pts.Project).WithMany().HasForeignKey(pts => pts.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<PlannedTeamSlot>().Property(pts => pts.PlannedMonthlyCost).HasColumnType("decimal(18,2)");
+            builder.Entity<PlannedTeamSlot>().Property(pts => pts.PlannedVendorCost).HasColumnType("decimal(18,2)");
+            builder.Entity<PlannedTeamSlot>().Property(pts => pts.Notes).HasMaxLength(1000);
+            builder.Entity<PlannedTeamSlot>().Property(pts => pts.RequiredSkills).HasMaxLength(500);
+            builder.Entity<PlannedTeamSlot>().HasOne(pts => pts.Project).WithMany(p => p.PlannedTeamSlots).HasForeignKey(pts => pts.ProjectId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<PlannedTeamSlot>().HasOne(pts => pts.Role).WithMany().HasForeignKey(pts => pts.RoleId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<PlannedTeamSlot>().HasOne(pts => pts.Path).WithMany().HasForeignKey(pts => pts.PathId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<PlannedTeamSlot>().HasIndex(pts => new { pts.ProjectId, pts.RoleId }).HasDatabaseName("IX_PlannedTeamSlot_Project_Role");
+
+            // Configure TaskDependency entity (many-to-many self-referencing relationship)
+            builder.Entity<TaskDependency>()
+                .HasKey(td => new { td.TaskId, td.DependentTaskId });
+
+            builder.Entity<TaskDependency>()
+                .HasOne(td => td.Task)
+                .WithMany(t => t.Dependencies)
+                .HasForeignKey(td => td.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TaskDependency>()
+                .HasOne(td => td.DependentTask)
+                .WithMany(t => t.DependentOn)
+                .HasForeignKey(td => td.DependentTaskId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Configure Identity tables for SQLite
             builder.Entity<ApplicationUser>(b =>
@@ -142,21 +162,21 @@ namespace ProjeX.Infrastructure.Data
             // Configure Overhead entity
             builder.Entity<Domain.Entities.Overhead>().Property(o => o.Description).HasMaxLength(500).IsRequired();
             builder.Entity<Domain.Entities.Overhead>().Property(o => o.Amount).HasColumnType("decimal(18,2)");
-            builder.Entity<Domain.Entities.Overhead>().HasOne(o => o.Project).WithMany().HasForeignKey(o => o.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Domain.Entities.Overhead>().HasOne(o => o.Project).WithMany(p => p.Overheads).HasForeignKey(o => o.ProjectId).OnDelete(DeleteBehavior.Restrict);
 
             // Configure Deliverable entity
             builder.Entity<Deliverable>().Property(d => d.Name).HasMaxLength(256).IsRequired();
             builder.Entity<Deliverable>().Property(d => d.Description).HasMaxLength(1000).IsRequired();
-            builder.Entity<Deliverable>().HasOne(d => d.Project).WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Deliverable>().HasOne(d => d.Project).WithMany(p => p.Deliverables).HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Restrict);
 
             // Configure ActualAssignment entity
             builder.Entity<ActualAssignment>().Property(aa => aa.AllocationPercent).HasColumnType("decimal(5,2)");
             builder.Entity<ActualAssignment>().Property(aa => aa.CostDifferenceAmount).HasColumnType("decimal(18,2)");
             builder.Entity<ActualAssignment>().Property(aa => aa.StartDate).IsRequired();
             builder.Entity<ActualAssignment>().Property(aa => aa.EndDate);
-            builder.Entity<ActualAssignment>().HasOne(aa => aa.Project).WithMany().HasForeignKey(aa => aa.ProjectId).OnDelete(DeleteBehavior.Restrict);
-            builder.Entity<ActualAssignment>().HasOne(aa => aa.PlannedTeamSlot).WithMany().HasForeignKey(aa => aa.PlannedTeamSlotId).OnDelete(DeleteBehavior.Restrict);
-            builder.Entity<ActualAssignment>().HasOne(aa => aa.Employee).WithMany().HasForeignKey(aa => aa.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ActualAssignment>().HasOne(aa => aa.Project).WithMany(p => p.ActualAssignments).HasForeignKey(aa => aa.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ActualAssignment>().HasOne(aa => aa.PlannedTeamSlot).WithMany(pts => pts.ActualAssignments).HasForeignKey(aa => aa.PlannedTeamSlotId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ActualAssignment>().HasOne(aa => aa.Employee).WithMany(e => e.ActualAssignments).HasForeignKey(aa => aa.EmployeeId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<ActualAssignment>().HasIndex(aa => new { aa.ProjectId, aa.PlannedTeamSlotId }).HasDatabaseName("IX_ActualAssignment_Project_PlannedSlot");
             builder.Entity<ActualAssignment>().HasIndex(aa => new { aa.EmployeeId, aa.Status }).HasDatabaseName("IX_ActualAssignment_Employee_Status");
             builder.Entity<ActualAssignment>().HasIndex(aa => new { aa.EmployeeId, aa.StartDate, aa.EndDate }).HasDatabaseName("IX_ActualAssignment_Employee_DateRange");
@@ -185,7 +205,7 @@ namespace ProjeX.Infrastructure.Data
             builder.Entity<Invoice>().Property(i => i.SubTotal).HasColumnType("decimal(18,2)");
             builder.Entity<Invoice>().Property(i => i.TaxAmount).HasColumnType("decimal(18,2)");
             builder.Entity<Invoice>().Property(i => i.Notes).HasColumnType("TEXT");
-            builder.Entity<Invoice>().HasOne(i => i.Project).WithMany().HasForeignKey(i => i.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Invoice>().HasOne(i => i.Project).WithMany(p => p.Invoices).HasForeignKey(i => i.ProjectId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Invoice>().HasOne(i => i.Client).WithMany().HasForeignKey(i => i.ClientId).OnDelete(DeleteBehavior.Restrict);
 
             // Configure InvoiceLineItem entity
@@ -217,20 +237,19 @@ namespace ProjeX.Infrastructure.Data
             builder.Entity<ChangeRequest>().Property(cr => cr.ApprovalComments).HasColumnType("TEXT");
             builder.Entity<ChangeRequest>().HasOne(cr => cr.Project).WithMany().HasForeignKey(cr => cr.ProjectId).OnDelete(DeleteBehavior.Restrict);
 
-            // TODO: Configure TaskDependency entity relationships properly
-            // Configure TaskDependency entity
+            // Configure TaskDependency entity relationships
             builder.Entity<TaskDependency>()
                 .HasKey(td => new { td.TaskId, td.DependentTaskId });
 
             builder.Entity<TaskDependency>()
                 .HasOne(td => td.Task)
-                .WithMany()
+                .WithMany(t => t.Dependencies)
                 .HasForeignKey(td => td.TaskId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<TaskDependency>()
                 .HasOne(td => td.DependentTask)
-                .WithMany()
+                .WithMany(t => t.DependentOn)
                 .HasForeignKey(td => td.DependentTaskId)
                 .OnDelete(DeleteBehavior.Restrict);
 

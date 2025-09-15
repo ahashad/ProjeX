@@ -1,3 +1,5 @@
+using ProjeX.Domain.Enums;
+
 namespace ProjeX.Application.PlannedTeamSlot
 {
     public class PlannedTeamSlotDto
@@ -15,7 +17,9 @@ namespace ProjeX.Application.PlannedTeamSlot
         public decimal ComputedBudgetCost { get; set; }
         public bool IsAssigned { get; set; }
         public decimal RemainingAllocationPercent { get; set; }
-        
+        public PlannedTeamStatus Status { get; set; } = PlannedTeamStatus.Planned;
+        public byte[]? RowVersion { get; set; }
+
         // Audit fields
         public string CreatedBy { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }

@@ -65,6 +65,7 @@ namespace ProjeX.Application.ResourceUtilization
             var project = await _context.Projects
                 .Include(p => p.ActualAssignments)
                     .ThenInclude(a => a.Employee)
+                        .ThenInclude(e => e.Role)
                 .Include(p => p.PlannedTeamSlots)
                     .ThenInclude(pts => pts.Role)
                 .FirstOrDefaultAsync(p => p.Id == projectId);
@@ -107,7 +108,13 @@ namespace ProjeX.Application.ResourceUtilization
             while (currentDate <= endDate)
             {
                 var periodEnd = GetPeriodEnd(currentDate, timeBucket);
-                
+
+                // Ensure period end doesn't exceed the requested end date
+                if (periodEnd > endDate)
+                {
+                    periodEnd = endDate;
+                }
+
                 var totalDemand = await _context.ActualAssignments
                     .Where(a => a.Status == AssignmentStatus.Active &&
                                a.StartDate <= periodEnd &&

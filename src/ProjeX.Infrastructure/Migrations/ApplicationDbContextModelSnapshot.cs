@@ -307,9 +307,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("EmployeeId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
@@ -334,16 +331,10 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid?>("PlannedTeamSlotId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("PlannedTeamSlotId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Priority")
                         .HasColumnType("int");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ProjectId1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RequestedByUserId")
@@ -376,13 +367,7 @@ namespace ProjeX.Infrastructure.Migrations
 
                     b.HasIndex("DeliverableId");
 
-                    b.HasIndex("EmployeeId1");
-
                     b.HasIndex("PlannedTeamSlotId");
-
-                    b.HasIndex("PlannedTeamSlotId1");
-
-                    b.HasIndex("ProjectId1");
 
                     b.HasIndex("EmployeeId", "Status")
                         .HasDatabaseName("IX_ActualAssignment_Employee_Status");
@@ -1106,9 +1091,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1127,8 +1109,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.HasIndex("PathId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Deliverables");
                 });
@@ -1405,9 +1385,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1430,8 +1407,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.HasIndex("ClientId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Invoices");
                 });
@@ -1883,9 +1858,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1894,8 +1866,6 @@ namespace ProjeX.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Overheads");
                 });
@@ -2057,9 +2027,13 @@ namespace ProjeX.Infrastructure.Migrations
 
                     b.Property<string>("Notes")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid?>("PathId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PathId1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("PeriodMonths")
@@ -2086,15 +2060,13 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("RequiredEndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("RequiredSkills")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("RequiredStartDate")
                         .HasColumnType("datetime2");
@@ -2114,7 +2086,7 @@ namespace ProjeX.Infrastructure.Migrations
 
                     b.HasIndex("PathId");
 
-                    b.HasIndex("ProjectId1");
+                    b.HasIndex("PathId1");
 
                     b.HasIndex("RoleId");
 
@@ -2169,7 +2141,7 @@ namespace ProjeX.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("EndDate")
+                    b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("ExpectedWorkingPeriodMonths")
@@ -2215,7 +2187,7 @@ namespace ProjeX.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<DateTime>("StartDate")
+                    b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
@@ -3413,32 +3385,20 @@ namespace ProjeX.Infrastructure.Migrations
                         .HasForeignKey("DeliverableId");
 
                     b.HasOne("ProjeX.Domain.Entities.Employee", "Employee")
-                        .WithMany()
+                        .WithMany("ActualAssignments")
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ProjeX.Domain.Entities.Employee", null)
-                        .WithMany("ActualAssignments")
-                        .HasForeignKey("EmployeeId1");
-
                     b.HasOne("ProjeX.Domain.Entities.PlannedTeamSlot", "PlannedTeamSlot")
-                        .WithMany()
+                        .WithMany("ActualAssignments")
                         .HasForeignKey("PlannedTeamSlotId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ProjeX.Domain.Entities.PlannedTeamSlot", null)
-                        .WithMany("ActualAssignments")
-                        .HasForeignKey("PlannedTeamSlotId1");
-
                     b.HasOne("ProjeX.Domain.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("ActualAssignments")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ProjeX.Domain.Entities.Project", null)
-                        .WithMany("ActualAssignments")
-                        .HasForeignKey("ProjectId1");
 
                     b.Navigation("Deliverable");
 
@@ -3554,14 +3514,10 @@ namespace ProjeX.Infrastructure.Migrations
                         .HasForeignKey("PathId");
 
                     b.HasOne("ProjeX.Domain.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("Deliverables")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ProjeX.Domain.Entities.Project", null)
-                        .WithMany("Deliverables")
-                        .HasForeignKey("ProjectId1");
 
                     b.Navigation("Owner");
 
@@ -3636,14 +3592,10 @@ namespace ProjeX.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("ProjeX.Domain.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("Invoices")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ProjeX.Domain.Entities.Project", null)
-                        .WithMany("Invoices")
-                        .HasForeignKey("ProjectId1");
 
                     b.Navigation("Client");
 
@@ -3758,14 +3710,10 @@ namespace ProjeX.Infrastructure.Migrations
             modelBuilder.Entity("ProjeX.Domain.Entities.Overhead", b =>
                 {
                     b.HasOne("ProjeX.Domain.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("Overheads")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ProjeX.Domain.Entities.Project", null)
-                        .WithMany("Overheads")
-                        .HasForeignKey("ProjectId1");
 
                     b.Navigation("Project");
                 });
@@ -3801,18 +3749,19 @@ namespace ProjeX.Infrastructure.Migrations
             modelBuilder.Entity("ProjeX.Domain.Entities.PlannedTeamSlot", b =>
                 {
                     b.HasOne("ProjeX.Domain.Entities.Path", "Path")
+                        .WithMany()
+                        .HasForeignKey("PathId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProjeX.Domain.Entities.Path", null)
                         .WithMany("PlannedTeamSlots")
-                        .HasForeignKey("PathId");
+                        .HasForeignKey("PathId1");
 
                     b.HasOne("ProjeX.Domain.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("PlannedTeamSlots")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("ProjeX.Domain.Entities.Project", null)
-                        .WithMany("PlannedTeamSlots")
-                        .HasForeignKey("ProjectId1");
 
                     b.HasOne("ProjeX.Domain.Entities.RolesCatalog", "Role")
                         .WithMany()
@@ -3920,13 +3869,13 @@ namespace ProjeX.Infrastructure.Migrations
             modelBuilder.Entity("ProjeX.Domain.Entities.TaskDependency", b =>
                 {
                     b.HasOne("ProjeX.Domain.Entities.Task", "DependentTask")
-                        .WithMany()
+                        .WithMany("DependentOn")
                         .HasForeignKey("DependentTaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ProjeX.Domain.Entities.Task", "Task")
-                        .WithMany()
+                        .WithMany("Dependencies")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -4187,6 +4136,10 @@ namespace ProjeX.Infrastructure.Migrations
             modelBuilder.Entity("ProjeX.Domain.Entities.Task", b =>
                 {
                     b.Navigation("Approvals");
+
+                    b.Navigation("Dependencies");
+
+                    b.Navigation("DependentOn");
                 });
 
             modelBuilder.Entity("ProjeX.Domain.Entities.Tender", b =>

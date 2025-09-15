@@ -1,23 +1,555 @@
 @page "/team-planning"
+@page "/team-planning/{ProjectId:guid}"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.PlannedTeamSlot
+@using ProjeX.Application.PlannedTeamSlot.Commands
+@using ProjeX.Application.Project
+@using ProjeX.Application.RolesCatalog
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Notifications
 @attribute [Authorize]
+@inject IPlannedTeamSlotService PlannedTeamSlotService
+@inject IProjectService ProjectService
+@inject IRolesCatalogService RolesCatalogService
+@inject NavigationManager Navigation
 
 <PageTitle>Team Planning - ProjeX</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Team Planning</h1>
+    <div>
+        <h1>Team Planning</h1>
+        @if (ProjectId.HasValue && currentProject != null)
+        {
+            <div class="d-flex align-items-center">
+                <h5 class="text-muted mb-0 me-3">Project: @currentProject.ProjectName</h5>
+                <span class="badge bg-info">Project Locked</span>
+            </div>
+        }
+    </div>
     <AuthorizeView Policy="ManagerOrAdmin">
-        <a href="/team-planning/create" class="btn btn-primary">
+        <button class="btn btn-primary" @onclick="ShowCreateModal">
             <i class="fas fa-plus me-2"></i>New Planning Slot
-        </a>
+        </button>
     </AuthorizeView>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <p class="text-muted">Team planning functionality will be implemented here.</p>
-        <p>This page will show planned team slots and resource allocation for projects.</p>
+<!-- Project Filter - Only show when not filtering by a specific project -->
+@if (!ProjectId.HasValue)
+{
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Filter by Project</label>
+            <SfDropDownList TValue="Guid?" TItem="ProjectDto" DataSource="@projects"
+                            @bind-Value="selectedProjectId" Placeholder="Select a project..."
+                            AllowClear="true" PopupHeight="200px">
+                <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
+                <DropDownListEvents TValue="Guid?" TItem="ProjectDto" ValueChange="OnProjectChanged"></DropDownListEvents>
+            </SfDropDownList>
+        </div>
     </div>
-</div>
+}
+
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (plannedSlots != null)
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@plannedSlots" AllowPaging="true" AllowSorting="true"
+                    AllowFiltering="true" AllowSelection="true" PageSize="15"
+                    Toolbar="@(new List<string>() { "Search" })">
+                <GridPageSettings PageSize="15"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    @if (!ProjectId.HasValue)
+                    {
+                        <GridColumn Field=@nameof(PlannedTeamSlotDto.ProjectName) HeaderText="Project" Width="180"></GridColumn>
+                    }
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.RoleName) HeaderText="Role" Width="150"></GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.AllocationPercent) HeaderText="Allocation %" Width="120" Format="N1">
+                        <Template>
+                            @{
+                                var slot = (context as PlannedTeamSlotDto);
+                            }
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">@slot?.AllocationPercent.ToString("F1")%</span>
+                                @if (slot?.IsAssigned == true)
+                                {
+                                    <span class="badge bg-success">@slot.RemainingAllocationPercent.ToString("F1")% remaining</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Available</span>
+                                }
+                            </div>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.PeriodMonths) HeaderText="Period (Months)" Width="120" Format="N1"></GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.PlannedSalary) HeaderText="Salary" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.PlannedIncentive) HeaderText="Incentive" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.ComputedBudgetCost) HeaderText="Budget Cost" Width="120" Format="C"></GridColumn>
+                    <GridColumn Field=@nameof(PlannedTeamSlotDto.Status) HeaderText="Status" Width="100">
+                        <Template>
+                            @{
+                                var slot = (context as PlannedTeamSlotDto);
+                                var badgeClass = GetStatusBadgeClass(slot?.Status ?? PlannedTeamStatus.Planned);
+                            }
+                            <span class="badge @badgeClass">@slot?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="200" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var slot = (context as PlannedTeamSlotDto);
+                            }
+                            <AuthorizeView Policy="ManagerOrAdmin" Context="gridAuth">
+                                <Authorized>
+                                    <div class="btn-group btn-group-sm">
+                                        @if (slot?.Status == PlannedTeamStatus.Active)
+                                        {
+                                            <button class="btn btn-outline-success" title="Assign Employee" @onclick="() => NavigateToActualAssignment(slot!)">
+                                                <i class="fas fa-user-plus"></i>
+                                            </button>
+                                        }
+                                        <button class="btn btn-outline-warning" title="Edit" @onclick="() => ShowEditModal(slot!)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" title="Delete" @onclick="() => ShowDeleteConfirmation(slot!)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<!-- Create/Edit Modal -->
+<SfDialog @bind-Visible="@showModal" Width="700px" Height="600px" IsModal="true">
+    <DialogTemplates>
+        <Header>@(isEdit ? "Edit" : "Create") Planning Slot</Header>
+        <Content>
+            <EditForm Model="@slotRequest" OnValidSubmit="@HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Project *</label>
+                            <SfDropDownList TValue="Guid" TItem="ProjectDto" DataSource="@projects"
+                                            @bind-Value="slotRequest.ProjectId" Placeholder="Select project..."
+                                            Enabled="@(!ProjectId.HasValue)">
+                                <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                            @if (ProjectId.HasValue)
+                            {
+                                <small class="form-text text-muted">Project is locked when accessed with a specific project ID.</small>
+                            }
+                            <ValidationMessage For="@(() => slotRequest.ProjectId)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Role *</label>
+                            <SfDropDownList TValue="Guid" TItem="RolesCatalogDto" DataSource="@roles"
+                                            @bind-Value="slotRequest.RoleId" Placeholder="Select role...">
+                                <DropDownListFieldSettings Value="Id" Text="RoleName"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => slotRequest.RoleId)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Period (Months)</label>
+                            <InputNumber @bind-Value="slotRequest.PeriodMonths" class="form-control" min="0.1" step="0.1" />
+                            <ValidationMessage For="@(() => slotRequest.PeriodMonths)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Allocation %</label>
+                            <InputNumber @bind-Value="slotRequest.AllocationPercent" class="form-control" min="0" max="100" step="1" />
+                            <ValidationMessage For="@(() => slotRequest.AllocationPercent)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Planned Salary</label>
+                            <InputNumber @bind-Value="slotRequest.PlannedSalary" class="form-control" min="0" step="100" />
+                            <ValidationMessage For="@(() => slotRequest.PlannedSalary)" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Planned Incentive</label>
+                            <InputNumber @bind-Value="slotRequest.PlannedIncentive" class="form-control" min="0" step="100" />
+                            <ValidationMessage For="@(() => slotRequest.PlannedIncentive)" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Commission %</label>
+                            <InputNumber @bind-Value="slotRequest.PlannedCommissionPercent" class="form-control" min="0" max="100" step="0.1" />
+                            <ValidationMessage For="@(() => slotRequest.PlannedCommissionPercent)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="HideModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        @(isEdit ? "Update" : "Create")
+                    </button>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+<!-- Delete Confirmation Dialog -->
+<SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
+    <DialogTemplates>
+        <Header>Confirm Delete</Header>
+        <Content>
+            <p>Are you sure you want to delete this planning slot for <strong>@selectedSlot?.RoleName</strong>?</p>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelDelete" />
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDelete" />
+    </DialogButtons>
+</SfDialog>
+
+<SfToast @ref="toastObj" Title="Notification" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    [Parameter] public Guid? ProjectId { get; set; }
+
+    private List<PlannedTeamSlotDto>? plannedSlots;
+    private List<ProjectDto>? projects;
+    private List<RolesCatalogDto>? roles;
+    private ProjectDto? currentProject;
+    private Guid? selectedProjectId;
+    private bool isLoading = false;
+    private bool showModal = false;
+    private bool showDeleteDialog = false;
+    private bool isEdit = false;
+    private bool isSubmitting = false;
+    private PlannedTeamSlotDto? selectedSlot;
+    private CreatePlannedTeamSlotCommand slotRequest = new();
+    private SfToast? toastObj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadProjects();
+            await LoadRoles();
+
+            // Handle project-specific navigation
+            if (ProjectId.HasValue)
+            {
+                await ValidateAndSetCurrentProject();
+                // Early return if navigation occurred due to invalid project
+                if (currentProject == null)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                selectedProjectId = null;
+            }
+
+            await LoadPlannedSlots();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error initializing page: {ex.Message}");
+            // If ProjectId was specified but initialization failed, navigate to projects list
+            if (ProjectId.HasValue)
+            {
+                Navigation.NavigateTo("/projects");
+            }
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            projects = (await ProjectService.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading projects: {ex.Message}");
+        }
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            roles = (await RolesCatalogService.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading roles: {ex.Message}");
+        }
+    }
+
+    private async Task ValidateAndSetCurrentProject()
+    {
+        if (ProjectId.HasValue)
+        {
+            if (projects == null || !projects.Any())
+            {
+                // No projects available - navigate to projects list
+                await ShowError("No projects found. Redirecting to projects list.");
+                Navigation.NavigateTo("/projects");
+                return;
+            }
+
+            currentProject = projects.FirstOrDefault(p => p.Id == ProjectId.Value);
+            if (currentProject != null)
+            {
+                selectedProjectId = ProjectId.Value;
+            }
+            else
+            {
+                // Project not found or invalid ID - navigate to projects list
+                await ShowError($"Project with ID {ProjectId.Value} not found. Redirecting to projects list.");
+                Navigation.NavigateTo("/projects");
+                return;
+            }
+        }
+    }
+
+    private async Task LoadPlannedSlots()
+    {
+        isLoading = true;
+        try
+        {
+            var projectIdToFilter = ProjectId ?? selectedProjectId;
+
+            if (projectIdToFilter.HasValue)
+            {
+                plannedSlots = await PlannedTeamSlotService.GetSlotsByProjectAsync(projectIdToFilter.Value);
+            }
+            else
+            {
+                // Load all slots from all projects
+                plannedSlots = new List<PlannedTeamSlotDto>();
+                if (projects != null)
+                {
+                    foreach (var project in projects)
+                    {
+                        var projectSlots = await PlannedTeamSlotService.GetSlotsByProjectAsync(project.Id);
+                        plannedSlots.AddRange(projectSlots);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading planned slots: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnProjectChanged(ChangeEventArgs<Guid?, ProjectDto> args)
+    {
+        selectedProjectId = args.Value;
+        await LoadPlannedSlots();
+    }
+
+    private void ShowCreateModal()
+    {
+        isEdit = false;
+        var projectIdToUse = ProjectId ?? selectedProjectId ?? Guid.Empty;
+
+        slotRequest = new CreatePlannedTeamSlotCommand
+        {
+            ProjectId = projectIdToUse,
+            AllocationPercent = 100,
+            PeriodMonths = 1
+        };
+        showModal = true;
+    }
+
+    private void ShowEditModal(PlannedTeamSlotDto slot)
+    {
+        isEdit = true;
+        selectedSlot = slot;
+        slotRequest = new CreatePlannedTeamSlotCommand
+        {
+            ProjectId = slot.ProjectId,
+            RoleId = slot.RoleId,
+            PeriodMonths = slot.PeriodMonths,
+            AllocationPercent = slot.AllocationPercent,
+            PlannedSalary = slot.PlannedSalary,
+            PlannedIncentive = slot.PlannedIncentive,
+            PlannedCommissionPercent = slot.PlannedCommissionPercent
+        };
+        showModal = true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            var currentUser = "current-user"; // TODO: Get actual user ID
+
+            if (isEdit && selectedSlot != null)
+            {
+                var updateCommand = new UpdatePlannedTeamSlotCommand
+                {
+                    Id = selectedSlot.Id,
+                    RoleId = slotRequest.RoleId,
+                    PeriodMonths = slotRequest.PeriodMonths,
+                    AllocationPercent = slotRequest.AllocationPercent,
+                    PlannedSalary = slotRequest.PlannedSalary,
+                    PlannedIncentive = slotRequest.PlannedIncentive,
+                    PlannedCommissionPercent = slotRequest.PlannedCommissionPercent,
+                    RowVersion = selectedSlot.RowVersion ?? new byte[0]
+                };
+
+                await PlannedTeamSlotService.UpdateSlotAsync(updateCommand, currentUser);
+                await ShowSuccess("Planning slot updated successfully!");
+            }
+            else
+            {
+                await PlannedTeamSlotService.CreateSlotAsync(slotRequest, currentUser);
+                await ShowSuccess("Planning slot created successfully!");
+            }
+
+            await LoadPlannedSlots();
+            HideModal();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error saving planning slot: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HideModal()
+    {
+        showModal = false;
+        selectedSlot = null;
+        slotRequest = new CreatePlannedTeamSlotCommand();
+    }
+
+    private void ShowDeleteConfirmation(PlannedTeamSlotDto slot)
+    {
+        selectedSlot = slot;
+        showDeleteDialog = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteDialog = false;
+        selectedSlot = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedSlot != null)
+        {
+            try
+            {
+                var currentUser = "current-user"; // TODO: Get actual user ID
+                await PlannedTeamSlotService.DeleteSlotAsync(selectedSlot.Id, currentUser);
+                await LoadPlannedSlots();
+                await ShowSuccess("Planning slot deleted successfully!");
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"Error deleting planning slot: {ex.Message}");
+            }
+        }
+
+        showDeleteDialog = false;
+        selectedSlot = null;
+    }
+
+    private string GetStatusBadgeClass(PlannedTeamStatus status)
+    {
+        return status switch
+        {
+            PlannedTeamStatus.Planned => "bg-secondary",
+            PlannedTeamStatus.Active => "bg-success",
+            PlannedTeamStatus.Completed => "bg-primary",
+            PlannedTeamStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void NavigateToActualAssignment(PlannedTeamSlotDto slot)
+    {
+        // Navigate to assignments page with the planned slot context
+        // This will allow managers to assign employees to this active planned slot
+        var url = $"/assignments?plannedSlotId={slot.Id}&projectId={slot.ProjectId}";
+        Navigation.NavigateTo(url);
+    }
+
+    private async Task ShowSuccess(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel
+            {
+                Title = "Success",
+                Content = message,
+                CssClass = "e-toast-success",
+                Icon = "fas fa-check"
+            });
+        }
+    }
+
+    private async Task ShowError(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel
+            {
+                Title = "Error",
+                Content = message,
+                CssClass = "e-toast-danger",
+                Icon = "fas fa-exclamation-triangle"
+            });
+        }
+    }
+}
 

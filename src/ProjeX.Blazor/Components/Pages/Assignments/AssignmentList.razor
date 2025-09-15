@@ -1,23 +1,778 @@
 @page "/assignments"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.ActualAssignment
+@using ProjeX.Application.ActualAssignment.Commands
+@using ProjeX.Application.PlannedTeamSlot
+@using ProjeX.Application.Project
+@using ProjeX.Application.Employee
+@using ProjeX.Domain.Enums
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Notifications
+@using Syncfusion.Blazor.Buttons
 @attribute [Authorize]
+@inject IAssignmentService AssignmentService
+@inject IPlannedTeamSlotService PlannedTeamSlotService
+@inject IProjectService ProjectService
+@inject IEmployeeService EmployeeService
+@inject NavigationManager Navigation
 
-<PageTitle>Assignments - ProjeX</PageTitle>
+<PageTitle>Team Assignments - ProjeX</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Assignments</h1>
+    <div>
+        <h1>Team Assignments</h1>
+        @if (PlannedSlotId.HasValue)
+        {
+            <p class="text-muted mb-0">
+                <i class="fas fa-link me-2"></i>
+                Assigning employees to planned slot from team planning
+            </p>
+        }
+    </div>
     <AuthorizeView Policy="ManagerOrAdmin">
-        <a href="/assignments/create" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>New Assignment
-        </a>
+        <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <i class="fas fa-user-plus me-2"></i>New Assignment
+        </button>
     </AuthorizeView>
 </div>
 
-<div class="card">
+<!-- Filter Section -->
+<div class="card mb-4">
     <div class="card-body">
-        <p class="text-muted">Assignment management functionality will be implemented here.</p>
-        <p>This page will show employee assignments to projects and roles.</p>
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Filter by Project</label>
+                <SfDropDownList TValue="Guid?" TItem="ProjectDto" DataSource="@projects"
+                                @bind-Value="selectedProjectId" Placeholder="All projects..."
+                                AllowClear="true" PopupHeight="200px">
+                    <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
+                    <DropDownListEvents TValue="Guid?" TItem="ProjectDto" ValueChange="OnProjectChanged"></DropDownListEvents>
+                </SfDropDownList>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Filter by Employee</label>
+                <SfDropDownList TValue="Guid?" TItem="EmployeeDto" DataSource="@employees"
+                                @bind-Value="selectedEmployeeId" Placeholder="All employees..."
+                                AllowClear="true" PopupHeight="200px">
+                    <DropDownListFieldSettings Value="Id" Text="FullName"></DropDownListFieldSettings>
+                    <DropDownListEvents TValue="Guid?" TItem="EmployeeDto" ValueChange="OnEmployeeChanged"></DropDownListEvents>
+                </SfDropDownList>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Filter by Status</label>
+                <SfDropDownList TValue="AssignmentStatus?" TItem="AssignmentStatusOption" DataSource="@statusOptions"
+                                @bind-Value="selectedStatus" Placeholder="All statuses..."
+                                AllowClear="true" PopupHeight="200px">
+                    <DropDownListFieldSettings Value="Value" Text="Text"></DropDownListFieldSettings>
+                    <DropDownListEvents TValue="AssignmentStatus?" TItem="AssignmentStatusOption" ValueChange="OnStatusChanged"></DropDownListEvents>
+                </SfDropDownList>
+            </div>
+        </div>
     </div>
 </div>
 
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (assignments != null)
+{
+    <div class="card">
+        <div class="card-body">
+            <SfGrid DataSource="@assignments" AllowPaging="true" AllowSorting="true"
+                    AllowFiltering="true" AllowSelection="true" PageSize="15"
+                    Toolbar="@(new List<string>() { "Search" })">
+                <GridPageSettings PageSize="15"></GridPageSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.ProjectName) HeaderText="Project" Width="160"></GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.EmployeeName) HeaderText="Employee" Width="140"></GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.RoleName) HeaderText="Role" Width="120"></GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.AllocationPercent) HeaderText="Allocation %" Width="100" Format="N1">
+                        <Template>
+                            @{
+                                var assignment = (context as ActualAssignmentDto);
+                            }
+                            <span>@assignment?.AllocationPercent.ToString("F1")%</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.StartDate) HeaderText="Start Date" Width="120" Format="d"></GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.EndDate) HeaderText="End Date" Width="120" Format="d">
+                        <Template>
+                            @{
+                                var assignment = (context as ActualAssignmentDto);
+                            }
+                            <span>@(assignment?.EndDate?.ToString("yyyy-MM-dd") ?? "Ongoing")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(ActualAssignmentDto.Status) HeaderText="Status" Width="100">
+                        <Template>
+                            @{
+                                var assignment = (context as ActualAssignmentDto);
+                                var badgeClass = GetStatusBadgeClass(assignment?.Status ?? AssignmentStatus.Planned);
+                            }
+                            <span class="badge @badgeClass">@assignment?.Status</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Warnings" Width="120" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var assignment = (context as ActualAssignmentDto);
+                            }
+                            @if (assignment?.CostCheckWarning == true)
+                            {
+                                <span class="badge bg-warning" title="Cost variance detected">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Cost
+                                </span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="180" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var assignment = (context as ActualAssignmentDto);
+                            }
+                            <AuthorizeView Policy="ManagerOrAdmin" Context="gridAuth">
+                                <Authorized>
+                                    <div class="btn-group btn-group-sm">
+                                        @if (assignment?.Status == AssignmentStatus.Planned)
+                                        {
+                                            <button class="btn btn-outline-success" title="Approve" @onclick="() => ApproveAssignment(assignment!)">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" title="Reject" @onclick="() => ShowRejectModal(assignment!)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        }
+                                        else if (assignment?.Status == AssignmentStatus.Active)
+                                        {
+                                            <button class="btn btn-outline-warning" title="Unassign" @onclick="() => ShowUnassignModal(assignment!)">
+                                                <i class="fas fa-user-times"></i>
+                                            </button>
+                                        }
+                                        <button class="btn btn-outline-info" title="View Details" @onclick="() => ShowDetailsModal(assignment!)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+}
+
+<!-- Create Assignment Modal -->
+<SfDialog @bind-Visible="@showCreateModal" Width="800px" Height="700px" IsModal="true">
+    <DialogTemplates>
+        <Header>Create New Assignment</Header>
+        <Content>
+            <EditForm Model="@assignmentRequest" OnValidSubmit="@HandleCreateSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Project *</label>
+                            <SfDropDownList TValue="Guid" TItem="ProjectDto" DataSource="@projects"
+                                            @bind-Value="assignmentRequest.ProjectId" Placeholder="Select project...">
+                                <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="Guid" TItem="ProjectDto" ValueChange="OnCreateProjectChanged"></DropDownListEvents>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => assignmentRequest.ProjectId)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Available Team Slot *</label>
+                            <SfDropDownList TValue="Guid" TItem="PlannedTeamSlotDto" DataSource="@availableSlots"
+                                            @bind-Value="assignmentRequest.PlannedTeamSlotId" Placeholder="Select slot..."
+                                            Enabled="@(assignmentRequest.ProjectId != Guid.Empty)">
+                                <DropDownListFieldSettings Value="Id" Text="PlannedTeamSlotDescription"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="Guid" TItem="PlannedTeamSlotDto" ValueChange="OnSlotChanged"></DropDownListEvents>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => assignmentRequest.PlannedTeamSlotId)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Employee *</label>
+                            <SfDropDownList TValue="Guid" TItem="EmployeeDto" DataSource="@employees"
+                                            @bind-Value="assignmentRequest.EmployeeId" Placeholder="Select employee...">
+                                <DropDownListFieldSettings Value="Id" Text="FullName"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="Guid" TItem="EmployeeDto" ValueChange="OnEmployeeSelectionChanged"></DropDownListEvents>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => assignmentRequest.EmployeeId)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Allocation %</label>
+                            <InputNumber @bind-Value="assignmentRequest.AllocationPercent" class="form-control" min="0" max="100" step="1" />
+                            <ValidationMessage For="@(() => assignmentRequest.AllocationPercent)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Start Date *</label>
+                            <InputDate @bind-Value="assignmentRequest.StartDate" class="form-control" />
+                            <ValidationMessage For="@(() => assignmentRequest.StartDate)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">End Date</label>
+                            <InputDate @bind-Value="assignmentRequest.EndDate" class="form-control" />
+                            <ValidationMessage For="@(() => assignmentRequest.EndDate)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <InputTextArea @bind-Value="assignmentRequest.Notes" class="form-control" rows="3" />
+                    <ValidationMessage For="@(() => assignmentRequest.Notes)" />
+                </div>
+
+                <!-- Validation Results -->
+                @if (validationResults != null)
+                {
+                    @if (validationResults.Errors.Any())
+                    {
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-circle me-2"></i>Assignment Blocked</h6>
+                            <ul class="mb-0">
+                                @foreach (var error in validationResults.Errors)
+                                {
+                                    <li>@error</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                    @if (validationResults.Warnings.Any())
+                    {
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Warnings</h6>
+                            <ul class="mb-0">
+                                @foreach (var warning in validationResults.Warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                }
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="HideCreateModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@(isSubmitting || (validationResults != null && validationResults.Errors.Any()))">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Create Assignment
+                    </button>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+<!-- Reject Assignment Modal -->
+<SfDialog @bind-Visible="@showRejectModal" Width="500px" Height="300px" IsModal="true">
+    <DialogTemplates>
+        <Header>Reject Assignment</Header>
+        <Content>
+            <p>Are you sure you want to reject the assignment for <strong>@selectedAssignment?.EmployeeName</strong>?</p>
+            <div class="mb-3">
+                <label class="form-label">Reason for rejection *</label>
+                <InputTextArea @bind-Value="rejectReason" class="form-control" rows="3" />
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelReject" />
+        <DialogButton Content="Reject" IsPrimary="true" OnClick="@ConfirmReject" />
+    </DialogButtons>
+</SfDialog>
+
+<!-- Unassign Modal -->
+<SfDialog @bind-Visible="@showUnassignModal" Width="500px" Height="250px" IsModal="true">
+    <DialogTemplates>
+        <Header>Unassign Employee</Header>
+        <Content>
+            <p>Are you sure you want to unassign <strong>@selectedAssignment?.EmployeeName</strong> from this project?</p>
+            <div class="mb-3">
+                <label class="form-label">End Date *</label>
+                <InputDate @bind-Value="unassignEndDate" class="form-control" />
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CancelUnassign" />
+        <DialogButton Content="Unassign" IsPrimary="true" OnClick="@ConfirmUnassign" />
+    </DialogButtons>
+</SfDialog>
+
+<!-- Assignment Details Modal -->
+<SfDialog @bind-Visible="@showDetailsModal" Width="700px" Height="600px" IsModal="true">
+    <DialogTemplates>
+        <Header>Assignment Details</Header>
+        <Content>
+            @if (selectedAssignment != null)
+            {
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Project Information</h6>
+                        <p><strong>Project:</strong> @selectedAssignment.ProjectName</p>
+                        <p><strong>Client:</strong> @selectedAssignment.ClientName</p>
+                        <p><strong>Project Duration:</strong> @selectedAssignment.ProjectStartDate.ToString("yyyy-MM-dd") - @selectedAssignment.ProjectEndDate.ToString("yyyy-MM-dd")</p>
+
+                        <h6 class="mt-3">Employee Information</h6>
+                        <p><strong>Employee:</strong> @selectedAssignment.EmployeeName</p>
+                        <p><strong>Email:</strong> @selectedAssignment.EmployeeEmail</p>
+                        <p><strong>Phone:</strong> @selectedAssignment.EmployeePhone</p>
+                        <p><strong>Role:</strong> @selectedAssignment.RoleName</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Assignment Details</h6>
+                        <p><strong>Allocation:</strong> @selectedAssignment.AllocationPercent.ToString("F1")%</p>
+                        <p><strong>Start Date:</strong> @selectedAssignment.StartDate.ToString("yyyy-MM-dd")</p>
+                        <p><strong>End Date:</strong> @(selectedAssignment.EndDate?.ToString("yyyy-MM-dd") ?? "Ongoing")</p>
+                        <p><strong>Status:</strong> <span class="badge @GetStatusBadgeClass(selectedAssignment.Status)">@selectedAssignment.Status</span></p>
+
+                        @if (selectedAssignment.CostCheckWarning)
+                        {
+                            <div class="alert alert-warning">
+                                <strong>Cost Warning:</strong> @selectedAssignment.CostDifferenceAmount.ToString("C") variance
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(selectedAssignment.Notes))
+                        {
+                            <h6 class="mt-3">Notes</h6>
+                            <p>@selectedAssignment.Notes</p>
+                        }
+
+                        <h6 class="mt-3">Audit Information</h6>
+                        <p><strong>Created:</strong> @selectedAssignment.CreatedAt.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.CreatedBy</p>
+                        @if (selectedAssignment.ModifiedAt.HasValue)
+                        {
+                            <p><strong>Modified:</strong> @selectedAssignment.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.ModifiedBy</p>
+                        }
+                        @if (selectedAssignment.ApprovedOn.HasValue)
+                        {
+                            <p><strong>Approved:</strong> @selectedAssignment.ApprovedOn.Value.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.ApprovedByUserId</p>
+                        }
+                    </div>
+                </div>
+            }
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Close" IsPrimary="true" OnClick="@HideDetailsModal" />
+    </DialogButtons>
+</SfDialog>
+
+<SfToast @ref="toastObj" Title="Notification" Timeout="5000" ShowProgressBar="false"></SfToast>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public Guid? PlannedSlotId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public Guid? ProjectId { get; set; }
+
+    private List<ActualAssignmentDto>? assignments;
+    private List<ProjectDto>? projects;
+    private List<EmployeeDto>? employees;
+    private List<PlannedTeamSlotDto>? availableSlots;
+    private List<AssignmentStatusOption> statusOptions = new();
+
+    private Guid? selectedProjectId;
+    private Guid? selectedEmployeeId;
+    private AssignmentStatus? selectedStatus;
+
+    private bool isLoading = false;
+    private bool showCreateModal = false;
+    private bool showRejectModal = false;
+    private bool showUnassignModal = false;
+    private bool showDetailsModal = false;
+    private bool isSubmitting = false;
+
+    private ActualAssignmentDto? selectedAssignment;
+    private CreateActualAssignmentCommand assignmentRequest = new();
+    private AssignmentCreationResult? validationResults;
+    private string rejectReason = string.Empty;
+    private DateTime unassignEndDate = DateTime.Today;
+    private SfToast? toastObj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+        await LoadEmployees();
+        await LoadAssignments();
+        InitializeStatusOptions();
+
+        // Handle query parameters from team planning navigation
+        if (ProjectId.HasValue)
+        {
+            selectedProjectId = ProjectId.Value;
+        }
+
+        // If coming from team planning with a planned slot ID, show a message about assignment context
+        if (PlannedSlotId.HasValue)
+        {
+            await ShowSuccess($"Ready to assign employees to the planned slot. Please create a new assignment.");
+        }
+    }
+
+    private void InitializeStatusOptions()
+    {
+        statusOptions = Enum.GetValues<AssignmentStatus>().Select(s => new AssignmentStatusOption
+        {
+            Value = s,
+            Text = s.ToString()
+        }).ToList();
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            projects = (await ProjectService.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading projects: {ex.Message}");
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            employees = (await EmployeeService.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading employees: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAssignments()
+    {
+        isLoading = true;
+        try
+        {
+            assignments = await AssignmentService.GetAssignmentsAsync(selectedProjectId, selectedEmployeeId);
+
+            // Apply status filter if selected
+            if (selectedStatus.HasValue)
+            {
+                assignments = assignments.Where(a => a.Status == selectedStatus.Value).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading assignments: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnProjectChanged(ChangeEventArgs<Guid?, ProjectDto> args)
+    {
+        selectedProjectId = args.Value;
+        await LoadAssignments();
+    }
+
+    private async Task OnEmployeeChanged(ChangeEventArgs<Guid?, EmployeeDto> args)
+    {
+        selectedEmployeeId = args.Value;
+        await LoadAssignments();
+    }
+
+    private async Task OnStatusChanged(ChangeEventArgs<AssignmentStatus?, AssignmentStatusOption> args)
+    {
+        selectedStatus = args.Value;
+        await LoadAssignments();
+    }
+
+    private async Task OnCreateProjectChanged(ChangeEventArgs<Guid, ProjectDto> args)
+    {
+        assignmentRequest.ProjectId = args.Value;
+        validationResults = null;
+
+        if (args.Value != Guid.Empty)
+        {
+            await LoadAvailableSlots(args.Value);
+        }
+        else
+        {
+            availableSlots = new List<PlannedTeamSlotDto>();
+        }
+    }
+
+    private async Task LoadAvailableSlots(Guid projectId)
+    {
+        try
+        {
+            availableSlots = await PlannedTeamSlotService.GetAvailableSlotsAsync(projectId);
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading available slots: {ex.Message}");
+        }
+    }
+
+    private async Task OnSlotChanged(ChangeEventArgs<Guid, PlannedTeamSlotDto> args)
+    {
+        assignmentRequest.PlannedTeamSlotId = args.Value;
+        validationResults = null;
+        await ValidateAssignment();
+    }
+
+    private async Task OnEmployeeSelectionChanged(ChangeEventArgs<Guid, EmployeeDto> args)
+    {
+        assignmentRequest.EmployeeId = args.Value;
+        validationResults = null;
+        await ValidateAssignment();
+    }
+
+    private async Task ValidateAssignment()
+    {
+        if (assignmentRequest.ProjectId != Guid.Empty &&
+            assignmentRequest.PlannedTeamSlotId != Guid.Empty &&
+            assignmentRequest.EmployeeId != Guid.Empty)
+        {
+            try
+            {
+                var currentUser = "current-user"; // TODO: Get actual user ID
+                validationResults = await AssignmentService.CreateAsync(assignmentRequest, currentUser);
+
+                // This will return validation results without actually creating the assignment
+                // The service should have a validation-only mode
+            }
+            catch (Exception)
+            {
+                // For now, we'll handle this in the actual create
+            }
+        }
+    }
+
+    private void ShowCreateModal()
+    {
+        assignmentRequest = new CreateActualAssignmentCommand
+        {
+            StartDate = DateTime.Today,
+            AllocationPercent = 100
+        };
+        validationResults = null;
+        showCreateModal = true;
+    }
+
+    private void HideCreateModal()
+    {
+        showCreateModal = false;
+        assignmentRequest = new CreateActualAssignmentCommand();
+        availableSlots = new List<PlannedTeamSlotDto>();
+        validationResults = null;
+    }
+
+    private async Task HandleCreateSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            var currentUser = "current-user"; // TODO: Get actual user ID
+            var result = await AssignmentService.CreateAsync(assignmentRequest, currentUser);
+
+            if (result.IsSuccessful)
+            {
+                await ShowSuccess("Assignment created successfully!");
+                await LoadAssignments();
+                HideCreateModal();
+            }
+            else
+            {
+                validationResults = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error creating assignment: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task ApproveAssignment(ActualAssignmentDto assignment)
+    {
+        try
+        {
+            var currentUser = "current-user"; // TODO: Get actual user ID
+            await AssignmentService.ApproveAsync(assignment.Id, currentUser);
+            await ShowSuccess("Assignment approved successfully!");
+            await LoadAssignments();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error approving assignment: {ex.Message}");
+        }
+    }
+
+    private void ShowRejectModal(ActualAssignmentDto assignment)
+    {
+        selectedAssignment = assignment;
+        rejectReason = string.Empty;
+        showRejectModal = true;
+    }
+
+    private void CancelReject()
+    {
+        showRejectModal = false;
+        selectedAssignment = null;
+        rejectReason = string.Empty;
+    }
+
+    private async Task ConfirmReject()
+    {
+        if (selectedAssignment != null && !string.IsNullOrEmpty(rejectReason))
+        {
+            try
+            {
+                var currentUser = "current-user"; // TODO: Get actual user ID
+                await AssignmentService.RejectAsync(selectedAssignment.Id, currentUser, rejectReason);
+                await ShowSuccess("Assignment rejected successfully!");
+                await LoadAssignments();
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"Error rejecting assignment: {ex.Message}");
+            }
+        }
+
+        showRejectModal = false;
+        selectedAssignment = null;
+        rejectReason = string.Empty;
+    }
+
+    private void ShowUnassignModal(ActualAssignmentDto assignment)
+    {
+        selectedAssignment = assignment;
+        unassignEndDate = DateTime.Today;
+        showUnassignModal = true;
+    }
+
+    private void CancelUnassign()
+    {
+        showUnassignModal = false;
+        selectedAssignment = null;
+    }
+
+    private async Task ConfirmUnassign()
+    {
+        if (selectedAssignment != null)
+        {
+            try
+            {
+                var currentUser = "current-user"; // TODO: Get actual user ID
+                var command = new UnassignActualAssignmentCommand
+                {
+                    AssignmentId = selectedAssignment.Id,
+                    EndDate = unassignEndDate
+                };
+                await AssignmentService.UnassignAsync(command, currentUser);
+                await ShowSuccess("Employee unassigned successfully!");
+                await LoadAssignments();
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"Error unassigning employee: {ex.Message}");
+            }
+        }
+
+        showUnassignModal = false;
+        selectedAssignment = null;
+    }
+
+    private void ShowDetailsModal(ActualAssignmentDto assignment)
+    {
+        selectedAssignment = assignment;
+        showDetailsModal = true;
+    }
+
+    private void HideDetailsModal()
+    {
+        showDetailsModal = false;
+        selectedAssignment = null;
+    }
+
+    private string GetSlotDisplayText(PlannedTeamSlotDto slot)
+    {
+        return $"{slot.RoleName} - {slot.AllocationPercent:F1}% ({slot.PeriodMonths:F1} months)";
+    }
+
+    private string GetStatusBadgeClass(AssignmentStatus status)
+    {
+        return status switch
+        {
+            AssignmentStatus.Planned => "bg-secondary",
+            AssignmentStatus.Active => "bg-success",
+            AssignmentStatus.Completed => "bg-primary",
+            AssignmentStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task ShowSuccess(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel
+            {
+                Title = "Success",
+                Content = message,
+                CssClass = "e-toast-success",
+                Icon = "fas fa-check"
+            });
+        }
+    }
+
+    private async Task ShowError(string message)
+    {
+        if (toastObj != null)
+        {
+            await toastObj.ShowAsync(new ToastModel
+            {
+                Title = "Error",
+                Content = message,
+                CssClass = "e-toast-danger",
+                Icon = "fas fa-exclamation-triangle"
+            });
+        }
+    }
+
+    public class AssignmentStatusOption
+    {
+        public AssignmentStatus Value { get; set; }
+        public string Text { get; set; } = string.Empty;
+    }
+}

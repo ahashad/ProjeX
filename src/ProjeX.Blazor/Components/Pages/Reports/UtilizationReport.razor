@@ -1,0 +1,556 @@
+@page "/reports/utilization"
+@using ProjeX.Application.ResourceUtilization
+@using ProjeX.Application.ActualAssignment
+@using ProjeX.Domain.Enums
+@inject IUtilizationService UtilizationService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Utilization Reports</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-bar me-2"></i>Utilization Reports</h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" @onclick="RefreshData">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-success" @onclick="ExportReport">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" @bind="startDate" @bind:event="onchange" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control" @bind="endDate" @bind:event="onchange" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Time Bucket</label>
+                            <select class="form-select" @bind="selectedTimeBucket">
+                                <option value="@TimeBucket.Weekly">Weekly</option>
+                                <option value="@TimeBucket.Monthly">Monthly</option>
+                                <option value="@TimeBucket.Quarterly">Quarterly</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" @onclick="LoadData" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="fas fa-search me-1"></i>Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (teamUtilization != null && teamUtilization.Any())
+    {
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Employees</h6>
+                                <h3 class="mb-0">@teamUtilization.Count</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Average Utilization</h6>
+                                <h3 class="mb-0">@($"{teamUtilization.Average(u => u.TotalAllocationPercent):F1}%")</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Over-Allocated</h6>
+                                <h3 class="mb-0">@teamUtilization.Count(u => u.IsOverAllocated)</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Under-Utilized</h6>
+                                <h3 class="mb-0">@teamUtilization.Count(u => u.IsUnderUtilized)</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-chart-bar fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Utilization Grid -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users me-2"></i>Team Utilization Overview
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Utilization %</th>
+                                        <th>Projects</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var util in teamUtilization.OrderByDescending(u => u.TotalAllocationPercent))
+                                    {
+                                        <tr class="@GetUtilizationRowClass(util)">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar me-2">
+                                                        <span class="badge bg-secondary rounded-circle p-2">
+                                                            @GetInitials(util.Assignments?.FirstOrDefault()?.EmployeeName ?? "Unknown")
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold">@(util.Assignments?.FirstOrDefault()?.EmployeeName ?? "Unknown")</div>
+                                                        <small class="text-muted">@(util.Assignments?.FirstOrDefault()?.EmployeeEmail ?? "")</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress me-2" style="width: 100px; height: 20px;">
+                                                        <div class="progress-bar @GetUtilizationBarClass(util)"
+                                                             style="width: @Math.Min(util.TotalAllocationPercent, 100)%"></div>
+                                                    </div>
+                                                    <span class="fw-bold">@($"{util.TotalAllocationPercent:F1}%")</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">@util.ProjectCount projects</span>
+                                            </td>
+                                            <td>
+                                                @if (util.IsOverAllocated)
+                                                {
+                                                    <span class="badge bg-danger">Over-Allocated</span>
+                                                }
+                                                else if (util.IsUnderUtilized)
+                                                {
+                                                    <span class="badge bg-warning">Under-Utilized</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">Optimal</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEmployeeDetails(util)">
+                                                    <i class="fas fa-eye me-1"></i>Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Capacity Forecast -->
+        @if (capacityForecast != null && capacityForecast.Any())
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calendar-alt me-2"></i>Capacity Forecast
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Period</th>
+                                            <th>Total Capacity</th>
+                                            <th>Total Demand</th>
+                                            <th>Available Capacity</th>
+                                            <th>Utilization %</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var forecast in capacityForecast)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div>
+                                                        <div class="fw-bold">@forecast.PeriodStart.ToString("MMM dd")</div>
+                                                        <small class="text-muted">to @forecast.PeriodEnd.ToString("MMM dd, yyyy")</small>
+                                                    </div>
+                                                </td>
+                                                <td>@($"{forecast.TotalCapacity:F0}%")</td>
+                                                <td>@($"{forecast.TotalDemand:F0}%")</td>
+                                                <td>
+                                                    <span class="@(forecast.AvailableCapacity < 0 ? "text-danger fw-bold" : "text-success")">
+                                                        @($"{forecast.AvailableCapacity:F0}%")
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress me-2" style="width: 80px; height: 15px;">
+                                                            <div class="progress-bar @GetCapacityBarClass(forecast.UtilizationPercentage)"
+                                                                 style="width: @Math.Min(forecast.UtilizationPercentage, 100)%"></div>
+                                                        </div>
+                                                        <span>@($"{forecast.UtilizationPercentage:F1}%")</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if (forecast.AvailableCapacity < 0)
+                                                    {
+                                                        <span class="badge bg-danger">Over-Capacity</span>
+                                                    }
+                                                    else if (forecast.UtilizationPercentage > 90)
+                                                    {
+                                                        <span class="badge bg-warning">High Utilization</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-success">Available</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Resource Recommendations -->
+        @if (recommendations != null && recommendations.Any())
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-lightbulb me-2"></i>Resource Recommendations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var rec in recommendations)
+                            {
+                                <div class="alert @GetRecommendationAlertClass(rec.Priority) alert-dismissible fade show">
+                                    <div class="d-flex">
+                                        <div class="me-3">
+                                            <i class="fas @GetRecommendationIcon(rec.Type) fa-lg"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="alert-heading">@rec.Type - @rec.Priority Priority</h6>
+                                            <p class="mb-1"><strong>@rec.EmployeeName</strong></p>
+                                            <p class="mb-1">@rec.Description</p>
+                                            <hr>
+                                            <p class="mb-0"><strong>Recommendation:</strong> @rec.Recommendation</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else if (!isLoading)
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No utilization data available</h4>
+            <p class="text-muted">Select a date range and click "Generate Report" to view utilization data.</p>
+        </div>
+    }
+</div>
+
+<!-- Employee Details Modal -->
+@if (selectedEmployeeUtilization != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user me-2"></i>Employee Utilization Details
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseEmployeeDetails"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Employee Information</h6>
+                            <p><strong>Name:</strong> @(selectedEmployeeUtilization.Assignments?.FirstOrDefault()?.EmployeeName ?? "Unknown")</p>
+                            <p><strong>Email:</strong> @(selectedEmployeeUtilization.Assignments?.FirstOrDefault()?.EmployeeEmail ?? "")</p>
+                            <p><strong>Total Allocation:</strong> @($"{selectedEmployeeUtilization.TotalAllocationPercent:F1}%")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Utilization Metrics</h6>
+                            <p><strong>Projects:</strong> @selectedEmployeeUtilization.ProjectCount</p>
+                            <p><strong>Status:</strong>
+                                @if (selectedEmployeeUtilization.IsOverAllocated)
+                                {
+                                    <span class="badge bg-danger">Over-Allocated</span>
+                                }
+                                else if (selectedEmployeeUtilization.IsUnderUtilized)
+                                {
+                                    <span class="badge bg-warning">Under-Utilized</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Optimal</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (selectedEmployeeUtilization.Assignments != null && selectedEmployeeUtilization.Assignments.Any())
+                    {
+                        <h6>Current Assignments</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Role</th>
+                                        <th>Allocation %</th>
+                                        <th>Period</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var assignment in selectedEmployeeUtilization.Assignments)
+                                    {
+                                        <tr>
+                                            <td>@assignment.ProjectName</td>
+                                            <td>@assignment.RoleName</td>
+                                            <td>@($"{assignment.AllocationPercent:F1}%")</td>
+                                            <td>
+                                                <small>
+                                                    @assignment.StartDate.ToString("MMM dd, yyyy") -
+                                                    @(assignment.EndDate?.ToString("MMM dd, yyyy") ?? "Ongoing")
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusBadgeClass(assignment.Status)">
+                                                    @assignment.Status
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEmployeeDetails">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime startDate = DateTime.Today.AddDays(-30);
+    private DateTime endDate = DateTime.Today.AddDays(30);
+    private TimeBucket selectedTimeBucket = TimeBucket.Weekly;
+    private bool isLoading = false;
+
+    private List<UtilizationSummaryDto>? teamUtilization;
+    private List<CapacityForecastDto>? capacityForecast;
+    private List<ResourceRecommendationDto>? recommendations;
+    private UtilizationSummaryDto? selectedEmployeeUtilization;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load team utilization
+            teamUtilization = await UtilizationService.GetTeamUtilizationAsync(startDate, endDate);
+
+            // Load capacity forecast
+            capacityForecast = await UtilizationService.GetCapacityForecastAsync(startDate, endDate, selectedTimeBucket);
+
+            // Load recommendations
+            recommendations = await UtilizationService.GetResourceRecommendationsAsync();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error loading utilization data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    private async Task ExportReport()
+    {
+        // TODO: Implement export functionality
+        await JSRuntime.InvokeVoidAsync("alert", "Export functionality will be implemented in a future version.");
+    }
+
+    private void ShowEmployeeDetails(UtilizationSummaryDto utilization)
+    {
+        selectedEmployeeUtilization = utilization;
+    }
+
+    private void CloseEmployeeDetails()
+    {
+        selectedEmployeeUtilization = null;
+    }
+
+    private string GetUtilizationRowClass(UtilizationSummaryDto util)
+    {
+        if (util.IsOverAllocated) return "table-danger";
+        if (util.IsUnderUtilized) return "table-warning";
+        return "";
+    }
+
+    private string GetUtilizationBarClass(UtilizationSummaryDto util)
+    {
+        if (util.IsOverAllocated) return "bg-danger";
+        if (util.IsUnderUtilized) return "bg-warning";
+        return "bg-success";
+    }
+
+    private string GetCapacityBarClass(decimal utilization)
+    {
+        if (utilization > 100) return "bg-danger";
+        if (utilization > 90) return "bg-warning";
+        return "bg-success";
+    }
+
+    private string GetRecommendationAlertClass(string priority)
+    {
+        return priority.ToLower() switch
+        {
+            "high" => "alert-danger",
+            "medium" => "alert-warning",
+            "low" => "alert-info",
+            _ => "alert-info"
+        };
+    }
+
+    private string GetRecommendationIcon(string type)
+    {
+        return type.ToLower() switch
+        {
+            "overallocation" => "fa-exclamation-triangle",
+            "underutilization" => "fa-arrow-down",
+            _ => "fa-info-circle"
+        };
+    }
+
+    private string GetStatusBadgeClass(AssignmentStatus status)
+    {
+        return status switch
+        {
+            AssignmentStatus.Planned => "bg-secondary",
+            AssignmentStatus.Active => "bg-success",
+            AssignmentStatus.Completed => "bg-primary",
+            AssignmentStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return parts[0][0].ToString().ToUpper();
+    }
+}

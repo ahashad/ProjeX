@@ -1,164 +1,554 @@
+@page "/"
 @page "/home"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
+@using ProjeX.Application.ResourceUtilization
+@using ProjeX.Application.ActualAssignment
+@using ProjeX.Application.Project
+@using ProjeX.Application.Client
+@using ProjeX.Application.Employee
+@using ProjeX.Application.TimeEntry
+@using ProjeX.Domain.Enums
 @attribute [Authorize]
+@inject IUtilizationService UtilizationService
+@inject IProjectService ProjectService
+@inject IClientService ClientService
+@inject IEmployeeService EmployeeService
+@inject ITimeEntryService TimeEntryService
+@inject IAssignmentService AssignmentService
 
 <PageTitle>Dashboard - ProjeX</PageTitle>
 
 <div class="row">
     <div class="col-12">
-        <h1 class="display-4">Dashboard</h1>
-        <p class="lead">Welcome to ProjeX - Your Project Management Solution</p>
+        <h1 class="display-4">Portfolio Dashboard</h1>
+        <p class="lead">Real-time overview of your organization's capacity, utilization, and project portfolio</p>
     </div>
 </div>
 
 <AuthorizeView>
     <Authorized>
-        <div class="row">
-            <div class="col-md-3">
-                <div class="card bg-primary text-white mb-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h4>Projects</h4>
-                                <h2>@projectCount</h2>
-                            </div>
-                            <div class="align-self-center">
-                                <i class="fas fa-briefcase fa-2x"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="/projects" class="text-white text-decoration-none">
-                            View All <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading dashboard...</span>
                 </div>
             </div>
-            
-            <div class="col-md-3">
-                <div class="card bg-success text-white mb-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h4>Clients</h4>
-                                <h2>@clientCount</h2>
-                            </div>
-                            <div class="align-self-center">
-                                <i class="fas fa-building fa-2x"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="/clients" class="text-white text-decoration-none">
-                            View All <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-3">
-                <div class="card bg-warning text-white mb-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h4>Employees</h4>
-                                <h2>@employeeCount</h2>
-                            </div>
-                            <div class="align-self-center">
-                                <i class="fas fa-users fa-2x"></i>
+        }
+        else
+        {
+            <!-- Top Level KPIs -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6>Active Projects</h6>
+                                    <h2>@activeProjectCount</h2>
+                                    <small>@totalProjectCount total</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-briefcase fa-2x opacity-75"></i>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="/employees" class="text-white text-decoration-none">
-                            View All <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-3">
-                <div class="card bg-info text-white mb-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h4>Time Entries</h4>
-                                <h2>@timeEntryCount</h2>
-                            </div>
-                            <div class="align-self-center">
-                                <i class="fas fa-clock fa-2x"></i>
-                            </div>
+                        <div class="card-footer">
+                            <a href="/projects" class="text-white text-decoration-none">
+                                View All <i class="fas fa-arrow-right"></i>
+                            </a>
                         </div>
                     </div>
-                    <div class="card-footer">
-                        <a href="/time-entries" class="text-white text-decoration-none">
-                            View All <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Recent Projects</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Recent project activity will be displayed here.</p>
+                <div class="col-md-3">
+                    <div class="card @GetUtilizationCardClass() text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6>Team Utilization</h6>
+                                    <h2>@($"{averageUtilization:F1}%")</h2>
+                                    <small>@employeeCount employees</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-users fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <a href="/reports/utilization" class="text-white text-decoration-none">
+                                View Details <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Quick Actions</h5>
+
+                <div class="col-md-3">
+                    <div class="card @GetCapacityCardClass() text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6>Available Capacity</h6>
+                                    <h2>@($"{availableCapacity:F0}%")</h2>
+                                    <small>@($"{totalCapacity:F0}% total")</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-chart-pie fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <a href="/assignments" class="text-white text-decoration-none">
+                                Manage <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <a href="/time-entries/create" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Log Time
-                            </a>
-                            <a href="/projects/create" class="btn btn-success">
-                                <i class="fas fa-plus me-2"></i>New Project
-                            </a>
-                            <a href="/clients/create" class="btn btn-info">
-                                <i class="fas fa-plus me-2"></i>New Client
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card bg-info text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6>Active Clients</h6>
+                                    <h2>@activeClientCount</h2>
+                                    <small>@totalClientCount total</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-building fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <a href="/clients" class="text-white text-decoration-none">
+                                View All <i class="fas fa-arrow-right"></i>
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Utilization Heatmap and Alerts Row -->
+            <div class="row mb-4">
+                <!-- Team Utilization Heatmap -->
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-fire me-2"></i>Team Utilization Heatmap
+                            </h5>
+                            <small class="text-muted">Current Period</small>
+                        </div>
+                        <div class="card-body">
+                            @if (teamUtilization != null && teamUtilization.Any())
+                            {
+                                <div class="row g-2">
+                                    @foreach (var employee in teamUtilization.Take(12))
+                                    {
+                                        <div class="col-md-3 col-sm-4 col-6">
+                                            <div class="card border-0 @GetEmployeeUtilizationClass(employee) text-white text-center p-2" style="min-height: 80px;">
+                                                <div class="fw-bold small">@GetEmployeeName(employee)</div>
+                                                <div class="h5 mb-0">@($"{employee.TotalAllocationPercent:F0}%")</div>
+                                                <div class="small">@employee.ProjectCount proj</div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                @if (teamUtilization.Count > 12)
+                                {
+                                    <div class="text-center mt-3">
+                                        <a href="/reports/utilization" class="btn btn-outline-primary btn-sm">
+                                            View All @teamUtilization.Count Employees
+                                        </a>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-users fa-3x mb-3"></i>
+                                    <p>No utilization data available</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts and Recommendations -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Alerts & Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (recommendations != null && recommendations.Any())
+                            {
+                                @foreach (var rec in recommendations.Take(4))
+                                {
+                                    <div class="alert @GetRecommendationAlertClass(rec.Priority) py-2 px-3 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas @GetRecommendationIcon(rec.Type) me-2"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold small">@rec.Type</div>
+                                                <div class="small">@GetShortEmployeeName(rec.EmployeeName)</div>
+                                            </div>
+                                            <span class="badge bg-white text-dark">@rec.Priority</span>
+                                        </div>
+                                    </div>
+                                }
+                                @if (recommendations.Count > 4)
+                                {
+                                    <div class="text-center">
+                                        <a href="/reports/utilization" class="btn btn-outline-primary btn-sm">
+                                            View All Alerts
+                                        </a>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                                    <p class="small mb-0">All systems optimal</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Portfolio and Capacity Forecast -->
+            <div class="row mb-4">
+                <!-- Project Portfolio Status -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Project Portfolio
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (recentProjects != null && recentProjects.Any())
+                            {
+                                @foreach (var project in recentProjects.Take(5))
+                                {
+                                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">@project.ProjectName</div>
+                                            <small class="text-muted">@project.ClientName</small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge @GetProjectStatusBadgeClass(project.Status)">
+                                                @project.Status
+                                            </span>
+                                            <div class="small text-muted">
+                                                @($"{(project.EndDate - DateTime.Now).Days}d left")
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="text-center mt-3">
+                                    <a href="/projects" class="btn btn-outline-primary btn-sm">View All Projects</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-briefcase fa-3x mb-3"></i>
+                                    <p>No active projects</p>
+                                    <a href="/projects/create" class="btn btn-primary btn-sm">Create Project</a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Capacity Forecast -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calendar-alt me-2"></i>Capacity Forecast
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (capacityForecast != null && capacityForecast.Any())
+                            {
+                                @foreach (var forecast in capacityForecast.Take(4))
+                                {
+                                    <div class="d-flex justify-content-between align-items-center py-2">
+                                        <div>
+                                            <div class="fw-bold">@forecast.PeriodStart.ToString("MMM dd")</div>
+                                            <small class="text-muted">Week of</small>
+                                        </div>
+                                        <div class="flex-grow-1 mx-3">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar @GetCapacityBarClass(forecast.UtilizationPercentage)"
+                                                     style="width: @Math.Min(forecast.UtilizationPercentage, 100)%">
+                                                    @($"{forecast.UtilizationPercentage:F0}%")
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            @if (forecast.AvailableCapacity < 0)
+                                            {
+                                                <span class="badge bg-danger">Over</span>
+                                            }
+                                            else if (forecast.UtilizationPercentage > 90)
+                                            {
+                                                <span class="badge bg-warning">High</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">OK</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                <div class="text-center mt-3">
+                                    <a href="/reports/utilization" class="btn btn-outline-primary btn-sm">View Forecast</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                    <p>Generating forecast...</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt me-2"></i>Quick Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/time-entries/create" class="btn btn-primary w-100">
+                                        <i class="fas fa-plus-circle d-block mb-1"></i>
+                                        <small>Log Time</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/projects/create" class="btn btn-success w-100">
+                                        <i class="fas fa-briefcase d-block mb-1"></i>
+                                        <small>New Project</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/assignments" class="btn btn-warning w-100">
+                                        <i class="fas fa-user-plus d-block mb-1"></i>
+                                        <small>Assign Team</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/clients/create" class="btn btn-info w-100">
+                                        <i class="fas fa-building d-block mb-1"></i>
+                                        <small>New Client</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/reports/utilization" class="btn btn-secondary w-100">
+                                        <i class="fas fa-chart-bar d-block mb-1"></i>
+                                        <small>Reports</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <a href="/employees" class="btn btn-dark w-100">
+                                        <i class="fas fa-users d-block mb-1"></i>
+                                        <small>Team</small>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     </Authorized>
     <NotAuthorized>
         <div class="row">
             <div class="col-12 text-center">
                 <h2>Welcome to ProjeX</h2>
-                <p class="lead">Please log in to access your dashboard.</p>
-                <a href="/Account/Login" class="btn btn-primary btn-lg">Login</a>
+                <p class="lead">Your comprehensive project management and resource planning solution.</p>
+                <a href="/Account/Login" class="btn btn-primary btn-lg">Login to Dashboard</a>
             </div>
         </div>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
-    private int projectCount = 0;
-    private int clientCount = 0;
+    private bool isLoading = true;
+
+    // KPI Data
+    private int activeProjectCount = 0;
+    private int totalProjectCount = 0;
+    private int activeClientCount = 0;
+    private int totalClientCount = 0;
     private int employeeCount = 0;
-    private int timeEntryCount = 0;
+    private decimal averageUtilization = 0;
+    private decimal availableCapacity = 0;
+    private decimal totalCapacity = 0;
+
+    // Dashboard Data
+    private List<UtilizationSummaryDto>? teamUtilization;
+    private List<ResourceRecommendationDto>? recommendations;
+    private List<ProjectDto>? recentProjects;
+    private List<CapacityForecastDto>? capacityForecast;
 
     protected override async Task OnInitializedAsync()
     {
-        // TODO: Load actual counts from services
-        // This is placeholder data
-        projectCount = 12;
-        clientCount = 8;
-        employeeCount = 15;
-        timeEntryCount = 45;
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentDate = DateTime.Today;
+            var futureDate = currentDate.AddDays(30);
+
+            // Load utilization data
+            teamUtilization = await UtilizationService.GetTeamUtilizationAsync(currentDate, futureDate);
+
+            // Load recommendations
+            recommendations = await UtilizationService.GetResourceRecommendationsAsync();
+
+            // Load capacity forecast
+            capacityForecast = await UtilizationService.GetCapacityForecastAsync(currentDate, futureDate, TimeBucket.Weekly);
+
+            // Load basic counts
+            // Note: These would ideally come from dedicated dashboard service methods
+            // For now, using existing services
+            employeeCount = teamUtilization?.Count ?? 0;
+            averageUtilization = teamUtilization?.Any() == true ? teamUtilization.Average(u => u.TotalAllocationPercent) : 0;
+
+            // Calculate capacity metrics
+            totalCapacity = employeeCount * 100; // 100% per employee
+            var usedCapacity = teamUtilization?.Sum(u => u.TotalAllocationPercent) ?? 0;
+            availableCapacity = totalCapacity - usedCapacity;
+
+            // Mock project and client data (would come from actual services)
+            activeProjectCount = 8;
+            totalProjectCount = 12;
+            activeClientCount = 6;
+            totalClientCount = 8;
+
+            // Mock recent projects data
+            recentProjects = new List<ProjectDto>
+            {
+                new ProjectDto { Id = Guid.NewGuid(), ProjectName = "Digital Transformation Initiative", ClientName = "TechCorp Inc.", Status = ProjectStatus.InProgress, EndDate = DateTime.Today.AddDays(45) },
+                new ProjectDto { Id = Guid.NewGuid(), ProjectName = "Mobile App Development", ClientName = "StartupXYZ", Status = ProjectStatus.InProgress, EndDate = DateTime.Today.AddDays(20) },
+                new ProjectDto { Id = Guid.NewGuid(), ProjectName = "ERP Implementation", ClientName = "Manufacturing Co", Status = ProjectStatus.InProgress, EndDate = DateTime.Today.AddDays(90) },
+                new ProjectDto { Id = Guid.NewGuid(), ProjectName = "Website Redesign", ClientName = "RetailMart", Status = ProjectStatus.InProgress, EndDate = DateTime.Today.AddDays(15) },
+                new ProjectDto { Id = Guid.NewGuid(), ProjectName = "Data Analytics Platform", ClientName = "FinanceGroup", Status = ProjectStatus.InProgress, EndDate = DateTime.Today.AddDays(60) }
+            };
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetUtilizationCardClass()
+    {
+        if (averageUtilization > 100) return "bg-danger";
+        if (averageUtilization > 90) return "bg-warning";
+        if (averageUtilization < 60) return "bg-info";
+        return "bg-success";
+    }
+
+    private string GetCapacityCardClass()
+    {
+        if (availableCapacity < 0) return "bg-danger";
+        if (availableCapacity < totalCapacity * 0.1m) return "bg-warning";
+        return "bg-success";
+    }
+
+    private string GetEmployeeUtilizationClass(UtilizationSummaryDto employee)
+    {
+        if (employee.IsOverAllocated) return "bg-danger";
+        if (employee.IsUnderUtilized) return "bg-warning";
+        return "bg-success";
+    }
+
+    private string GetEmployeeName(UtilizationSummaryDto employee)
+    {
+        var fullName = employee.Assignments?.FirstOrDefault()?.EmployeeName ?? "Unknown";
+        var parts = fullName.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0]} {parts[1][0]}.";
+        }
+        return parts[0];
+    }
+
+    private string GetShortEmployeeName(string fullName)
+    {
+        var parts = fullName?.Split(' ') ?? new[] { "Unknown" };
+        return parts[0];
+    }
+
+    private string GetRecommendationAlertClass(string priority)
+    {
+        return priority.ToLower() switch
+        {
+            "high" => "alert-danger",
+            "medium" => "alert-warning",
+            "low" => "alert-info",
+            _ => "alert-info"
+        };
+    }
+
+    private string GetRecommendationIcon(string type)
+    {
+        return type.ToLower() switch
+        {
+            "overallocation" => "fa-exclamation-triangle",
+            "underutilization" => "fa-arrow-down",
+            _ => "fa-info-circle"
+        };
+    }
+
+    private string GetProjectStatusBadgeClass(ProjectStatus status)
+    {
+        return status switch
+        {
+            ProjectStatus.Planned => "bg-secondary",
+            ProjectStatus.InProgress => "bg-primary",
+            ProjectStatus.Completed => "bg-success",
+            ProjectStatus.OnHold => "bg-warning",
+            ProjectStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetCapacityBarClass(decimal utilization)
+    {
+        if (utilization > 100) return "bg-danger";
+        if (utilization > 90) return "bg-warning";
+        return "bg-success";
     }
 }

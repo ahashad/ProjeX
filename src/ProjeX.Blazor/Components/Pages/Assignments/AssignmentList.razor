@@ -7,6 +7,7 @@
 @using ProjeX.Application.Project
 @using ProjeX.Application.Employee
 @using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.DropDowns
 @using Syncfusion.Blazor.Popups
@@ -17,6 +18,7 @@
 @inject IPlannedTeamSlotService PlannedTeamSlotService
 @inject IProjectService ProjectService
 @inject IEmployeeService EmployeeService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>Team Assignments - ProjeX</PageTitle>
@@ -562,15 +564,12 @@ else if (assignments != null)
         {
             try
             {
-                var currentUser = "current-user"; // TODO: Get actual user ID
-                validationResults = await AssignmentService.CreateAsync(assignmentRequest, currentUser);
-
-                // This will return validation results without actually creating the assignment
-                // The service should have a validation-only mode
+                validationResults = await AssignmentService.ValidateAssignmentAsync(assignmentRequest);
             }
             catch (Exception)
             {
-                // For now, we'll handle this in the actual create
+                // Clear validation results on error - validation will happen again during actual submission
+                validationResults = null;
             }
         }
     }
@@ -599,8 +598,9 @@ else if (assignments != null)
         isSubmitting = true;
         try
         {
-            var currentUser = "current-user"; // TODO: Get actual user ID
-            var result = await AssignmentService.CreateAsync(assignmentRequest, currentUser);
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+            var result = await AssignmentService.CreateAsync(assignmentRequest, userId);
 
             if (result.IsSuccessful)
             {
@@ -627,8 +627,9 @@ else if (assignments != null)
     {
         try
         {
-            var currentUser = "current-user"; // TODO: Get actual user ID
-            await AssignmentService.ApproveAsync(assignment.Id, currentUser);
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+            await AssignmentService.ApproveAsync(assignment.Id, userId);
             await ShowSuccess("Assignment approved successfully!");
             await LoadAssignments();
         }
@@ -658,8 +659,9 @@ else if (assignments != null)
         {
             try
             {
-                var currentUser = "current-user"; // TODO: Get actual user ID
-                await AssignmentService.RejectAsync(selectedAssignment.Id, currentUser, rejectReason);
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                var userId = currentUser?.Id ?? "System";
+                await AssignmentService.RejectAsync(selectedAssignment.Id, userId, rejectReason);
                 await ShowSuccess("Assignment rejected successfully!");
                 await LoadAssignments();
             }
@@ -693,13 +695,14 @@ else if (assignments != null)
         {
             try
             {
-                var currentUser = "current-user"; // TODO: Get actual user ID
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                var userId = currentUser?.Id ?? "System";
                 var command = new UnassignActualAssignmentCommand
                 {
                     AssignmentId = selectedAssignment.Id,
                     EndDate = unassignEndDate
                 };
-                await AssignmentService.UnassignAsync(command, currentUser);
+                await AssignmentService.UnassignAsync(command, userId);
                 await ShowSuccess("Employee unassigned successfully!");
                 await LoadAssignments();
             }

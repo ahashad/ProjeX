@@ -1,20 +1,31 @@
 @page "/team-planning"
 @page "/team-planning/{ProjectId:guid}"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
+
 @using Microsoft.AspNetCore.Authorization
 @using ProjeX.Application.PlannedTeamSlot
 @using ProjeX.Application.PlannedTeamSlot.Commands
 @using ProjeX.Application.Project
 @using ProjeX.Application.RolesCatalog
+@using ProjeX.Application.Employee
+@using ProjeX.Application.ActualAssignment
+@using ProjeX.Application.ActualAssignment.Commands
 @using ProjeX.Domain.Enums
+@using ProjeX.Domain.Interfaces
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.DropDowns
 @using Syncfusion.Blazor.Popups
 @using Syncfusion.Blazor.Notifications
+@using Microsoft.AspNetCore.Components
+
 @attribute [Authorize]
+@implements IAsyncDisposable
 @inject IPlannedTeamSlotService PlannedTeamSlotService
 @inject IProjectService ProjectService
 @inject IRolesCatalogService RolesCatalogService
+@inject IEmployeeService EmployeeService
+@inject IAssignmentService AssignmentService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager Navigation
 
 <PageTitle>Team Planning - ProjeX</PageTitle>
@@ -22,7 +33,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1>Team Planning</h1>
-        @if (ProjectId.HasValue && currentProject != null)
+        @if (EffectiveProjectId.HasValue && currentProject != null)
         {
             <div class="d-flex align-items-center">
                 <h5 class="text-muted mb-0 me-3">Project: @currentProject.ProjectName</h5>
@@ -37,21 +48,24 @@
     </AuthorizeView>
 </div>
 
-<!-- Project Filter - Only show when not filtering by a specific project -->
-@if (!ProjectId.HasValue)
-{
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <label class="form-label">Filter by Project</label>
-            <SfDropDownList TValue="Guid?" TItem="ProjectDto" DataSource="@projects"
-                            @bind-Value="selectedProjectId" Placeholder="Select a project..."
-                            AllowClear="true" PopupHeight="200px">
-                <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
-                <DropDownListEvents TValue="Guid?" TItem="ProjectDto" ValueChange="OnProjectChanged"></DropDownListEvents>
-            </SfDropDownList>
-        </div>
+<!-- Project Filter -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <label class="form-label">@(EffectiveProjectId.HasValue ? "Selected Project" : "Filter by Project")</label>
+        <SfDropDownList TValue="Guid?" TItem="ProjectDto" DataSource="@projects"
+                        @bind-Value="selectedProjectId" Placeholder="Select a project..."
+                        AllowClear="@(!EffectiveProjectId.HasValue)" PopupHeight="200px"
+                        Enabled="@(!EffectiveProjectId.HasValue)">
+            <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
+            <DropDownListEvents TValue="Guid?" TItem="ProjectDto" ValueChange="OnProjectChanged"></DropDownListEvents>
+        </SfDropDownList>
+        <small class="text-info">Debug: EffectiveProjectId = @(EffectiveProjectId?.ToString() ?? "null")</small>
+        @if (EffectiveProjectId.HasValue)
+        {
+            <small class="form-text text-muted">Project is locked when accessed with a specific project ID.</small>
+        }
     </div>
-}
+</div>
 
 @if (isLoading)
 {
@@ -71,7 +85,7 @@ else if (plannedSlots != null)
                 <GridPageSettings PageSize="15"></GridPageSettings>
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
                 <GridColumns>
-                    @if (!ProjectId.HasValue)
+                    @if (!EffectiveProjectId.HasValue)
                     {
                         <GridColumn Field=@nameof(PlannedTeamSlotDto.ProjectName) HeaderText="Project" Width="180"></GridColumn>
                     }
@@ -107,7 +121,7 @@ else if (plannedSlots != null)
                             <span class="badge @badgeClass">@slot?.Status</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="200" AllowFiltering="false" AllowSorting="false">
+                    <GridColumn HeaderText="Actions" Width="250" AllowFiltering="false" AllowSorting="false">
                         <Template>
                             @{
                                 var slot = (context as PlannedTeamSlotDto);
@@ -115,11 +129,20 @@ else if (plannedSlots != null)
                             <AuthorizeView Policy="ManagerOrAdmin" Context="gridAuth">
                                 <Authorized>
                                     <div class="btn-group btn-group-sm">
-                                        @if (slot?.Status == PlannedTeamStatus.Active)
+                                        @if (slot?.Status == PlannedTeamStatus.Planned)
                                         {
-                                            <button class="btn btn-outline-success" title="Assign Employee" @onclick="() => NavigateToActualAssignment(slot!)">
-                                                <i class="fas fa-user-plus"></i>
-                                            </button>
+                                            @if (slot.IsAssigned)
+                                            {
+                                                <button class="btn btn-outline-warning" title="Unassign Employee" @onclick="() => ShowUnassignmentModal(slot!)">
+                                                    <i class="fas fa-user-minus"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-outline-success" title="Assign Employee" @onclick="() => ShowAssignmentModal(slot!)">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            }
                                         }
                                         <button class="btn btn-outline-warning" title="Edit" @onclick="() => ShowEditModal(slot!)">
                                             <i class="fas fa-edit"></i>
@@ -138,7 +161,7 @@ else if (plannedSlots != null)
     </div>
 }
 
-<!-- Create/Edit Modal -->
+<!-- Create/Edit Planning Slot Modal -->
 <SfDialog @bind-Visible="@showModal" Width="700px" Height="600px" IsModal="true">
     <DialogTemplates>
         <Header>@(isEdit ? "Edit" : "Create") Planning Slot</Header>
@@ -152,10 +175,10 @@ else if (plannedSlots != null)
                             <label class="form-label">Project *</label>
                             <SfDropDownList TValue="Guid" TItem="ProjectDto" DataSource="@projects"
                                             @bind-Value="slotRequest.ProjectId" Placeholder="Select project..."
-                                            Enabled="@(!ProjectId.HasValue)">
+                                            Enabled="@(!EffectiveProjectId.HasValue)">
                                 <DropDownListFieldSettings Value="Id" Text="ProjectName"></DropDownListFieldSettings>
                             </SfDropDownList>
-                            @if (ProjectId.HasValue)
+                            @if (EffectiveProjectId.HasValue)
                             {
                                 <small class="form-text text-muted">Project is locked when accessed with a specific project ID.</small>
                             }
@@ -230,6 +253,254 @@ else if (plannedSlots != null)
     </DialogTemplates>
 </SfDialog>
 
+<!-- Assignment Modal -->
+<SfDialog @bind-Visible="@showAssignmentModal" Width="800px" Height="700px" IsModal="true">
+    <DialogTemplates>
+        <Header>Assign Employee to @selectedSlot?.RoleName</Header>
+        <Content>
+            <EditForm Model="@assignmentRequest" OnValidSubmit="@HandleAssignmentSubmit">
+                <DataAnnotationsValidator />
+
+                <!-- Planned Slot Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Planned Slot Details</h6>
+                    </div>
+                    <div class="card-body">
+                        @if (selectedSlot != null)
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Role:</strong> @selectedSlot.RoleName</p>
+                                    <p><strong>Project:</strong> @selectedSlot.ProjectName</p>
+                                    <p><strong>Planned Allocation:</strong> @selectedSlot.AllocationPercent.ToString("F1")%</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Period:</strong> @selectedSlot.PeriodMonths.ToString("F1") months</p>
+                                    <p><strong>Planned Salary:</strong> @selectedSlot.PlannedSalary.ToString("C")</p>
+                                    <p><strong>Budget Cost:</strong> @selectedSlot.ComputedBudgetCost.ToString("C")</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Employee *</label>
+
+
+
+                            <SfDropDownList TValue="Guid" TItem="EmployeeDto" DataSource="@availableEmployees"
+                                            @bind-Value="assignmentRequest.EmployeeId"
+                                            Placeholder="Select employee..."
+                                            AllowFiltering="true"
+                                            FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains"
+                                            PopupHeight="300px" Width="100%">
+                                <DropDownListFieldSettings Value="Id" Text="FullName"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="Guid" TItem="EmployeeDto" ValueChange="OnAssignmentEmployeeChanged"></DropDownListEvents>
+
+                                <DropDownListTemplates TItem="EmployeeDto">
+                                    <!-- Template for items in the dropdown list -->
+                                    <ItemTemplate Context="employee">
+                                        @if (employee != null)
+                                        {
+                                            <div class="d-flex align-items-center py-2">
+                                                <div class="flex-grow-1">
+                                                    <strong>@employee.FullName</strong>
+                                                    <div class="text-muted small">
+                                                        <i class="fas fa-user-tag me-1"></i>@employee.RoleName
+                                                    </div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-success">
+                                                        @employee.Salary.ToString("C0")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </ItemTemplate>
+
+                                    <!-- Template for the selected value -->
+                                    <ValueTemplate Context="selectedEmp">
+                                        @if (selectedEmp != null)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <strong class="me-2">@selectedEmp.FullName</strong>
+                                                <small class="text-muted">(@selectedEmp.RoleName)</small>
+                                                <span class="ms-auto text-success fw-bold">@selectedEmp.Salary.ToString("C0")</span>
+                                            </div>
+                                        }
+                                    </ValueTemplate>
+                                </DropDownListTemplates>
+                            </SfDropDownList>
+
+
+
+                            <ValidationMessage For="@(() => assignmentRequest.EmployeeId)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Allocation % *</label>
+                            <InputNumber @bind-Value="assignmentRequest.AllocationPercent" class="form-control" min="0" max="100" step="1" />
+                            <ValidationMessage For="@(() => assignmentRequest.AllocationPercent)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Start Date *</label>
+                            <InputDate @bind-Value="assignmentRequest.StartDate" class="form-control" />
+                            <ValidationMessage For="@(() => assignmentRequest.StartDate)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">End Date</label>
+                            <InputDate @bind-Value="assignmentRequest.EndDate" class="form-control" />
+                            <small class="form-text text-muted">Leave empty to use project end date</small>
+                            <ValidationMessage For="@(() => assignmentRequest.EndDate)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <InputTextArea @bind-Value="assignmentRequest.Notes" class="form-control" rows="3" placeholder="Optional notes about this assignment..." />
+                    <ValidationMessage For="@(() => assignmentRequest.Notes)" />
+                </div>
+
+                @if (selectedEmployee != null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Cost Analysis</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Employee Actual Cost</h6>
+                                    <p><strong>Salary:</strong> @selectedEmployee.Salary.ToString("C")</p>
+                                    <p><strong>Monthly Incentive:</strong> @selectedEmployee.MonthlyIncentive.ToString("C")</p>
+                                    @{
+                                        var empCommissionValue = (selectedEmployee.CommissionPercent / 100m) * (currentProject?.ProjectPrice ?? 0);
+                                    }
+                                    <p><strong>Commission:</strong> @empCommissionValue.ToString("C") (@selectedEmployee.CommissionPercent.ToString("F1")%)</p>
+                                    <hr>
+                                    <p><strong>Total Monthly Cost:</strong> @(selectedEmployee.Salary + selectedEmployee.MonthlyIncentive + empCommissionValue).ToString("C")</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Cost Variance</h6>
+                                    @{
+                                        var plannedCommissionValue = (selectedSlot?.PlannedCommissionPercent / 100m ?? 0) * (currentProject?.ProjectPrice ?? 0);
+                                        var salaryVariance = selectedEmployee.Salary - (selectedSlot?.PlannedSalary ?? 0);
+                                        var incentiveVariance = selectedEmployee.MonthlyIncentive - (selectedSlot?.PlannedIncentive ?? 0);
+                                        var commissionVariance = empCommissionValue - plannedCommissionValue;
+                                        var totalVariance = salaryVariance + incentiveVariance + commissionVariance;
+                                    }
+                                    <p><strong>Salary Variance:</strong> <span class="@(salaryVariance >= 0 ? "text-warning" : "text-success")">@salaryVariance.ToString("C")</span></p>
+                                    <p><strong>Incentive Variance:</strong> <span class="@(incentiveVariance >= 0 ? "text-warning" : "text-success")">@incentiveVariance.ToString("C")</span></p>
+                                    <p><strong>Commission Variance:</strong> <span class="@(commissionVariance >= 0 ? "text-warning" : "text-success")">@commissionVariance.ToString("C")</span></p>
+                                    <hr>
+                                    <p><strong>Total Variance:</strong> <span class="@(totalVariance >= 0 ? "text-warning" : "text-success")">@totalVariance.ToString("C")</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (employeeCurrentAllocation > 0)
+                {
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Employee current allocation: @employeeCurrentAllocation.ToString("F1")%
+                        @if (employeeCurrentAllocation + assignmentRequest.AllocationPercent > 100)
+                        {
+                            <br>
+
+                            <strong class="text-warning">Warning: Total allocation would exceed 100%!</strong>
+                        }
+                    </div>
+                }
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="HideAssignmentModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"
+                            disabled="@(isAssignmentSubmitting || (employeeCurrentAllocation + assignmentRequest.AllocationPercent > 100))">
+                        @if (isAssignmentSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Create Assignment
+                    </button>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+<!-- Unassignment Modal -->
+<SfDialog @bind-Visible="@showUnassignmentModal" Width="600px" Height="500px" IsModal="true">
+    <DialogTemplates>
+        <Header>Unassign Employee from @selectedSlot?.RoleName</Header>
+        <Content>
+            <EditForm Model="@unassignmentRequest" OnValidSubmit="@HandleUnassignmentSubmit">
+                <DataAnnotationsValidator />
+
+                @if (selectedAssignment != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-user me-2"></i>Current Assignment Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Employee:</strong> @selectedAssignment.EmployeeName</p>
+                                    <p><strong>Role:</strong> @selectedAssignment.RoleName</p>
+                                    <p><strong>Project:</strong> @selectedAssignment.ProjectName</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Start Date:</strong> @selectedAssignment.StartDate.ToString("yyyy-MM-dd")</p>
+                                    <p><strong>Allocation:</strong> @selectedAssignment.AllocationPercent.ToString("F1")%</p>
+                                    <p><strong>Status:</strong> <span class="badge bg-success">@selectedAssignment.Status</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">End Date *</label>
+                    <InputDate @bind-Value="unassignmentRequest.EndDate" class="form-control" />
+                    <small class="form-text text-muted">Set the employee's exit date from this project</small>
+                    <ValidationMessage For="@(() => unassignmentRequest.EndDate)" />
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This will set an end date for the employee's assignment to this project. The employee will be unassigned from the planned slot.
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="HideUnassignmentModal">Cancel</button>
+                    <button type="submit" class="btn btn-warning" disabled="@isUnassignmentSubmitting">
+                        @if (isUnassignmentSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Unassign Employee
+                    </button>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
 <!-- Delete Confirmation Dialog -->
 <SfDialog @bind-Visible="@showDeleteDialog" Width="400px" Height="200px" IsModal="true">
     <DialogTemplates>
@@ -248,64 +519,109 @@ else if (plannedSlots != null)
 
 @code {
     [Parameter] public Guid? ProjectId { get; set; }
+    [SupplyParameterFromQuery(Name = "projectId")] public Guid? ProjectIdQuery { get; set; }
+    private Guid? EffectiveProjectId => ProjectId ?? ProjectIdQuery;
+
+    // Disposal & redirect guards
+    private bool _disposed;
+    private bool _shouldRedirectToProjects;
+
+    // Optional CTS if you want extra cancellation
+    private readonly CancellationTokenSource _cts = new();
+    private CancellationToken Token => _cts.Token;
 
     private List<PlannedTeamSlotDto>? plannedSlots;
     private List<ProjectDto>? projects;
     private List<RolesCatalogDto>? roles;
+    private List<EmployeeDto>? employees;
+    private List<EmployeeDto>? availableEmployees;
     private ProjectDto? currentProject;
     private Guid? selectedProjectId;
     private bool isLoading = false;
     private bool showModal = false;
     private bool showDeleteDialog = false;
+    private bool showAssignmentModal = false;
+    private bool showUnassignmentModal = false;
     private bool isEdit = false;
     private bool isSubmitting = false;
+    private bool isAssignmentSubmitting = false;
+    private bool isUnassignmentSubmitting = false;
     private PlannedTeamSlotDto? selectedSlot;
+    private EmployeeDto? selectedEmployee;
+    private ActualAssignmentDto? selectedAssignment;
     private CreatePlannedTeamSlotCommand slotRequest = new();
+    private CreateActualAssignmentCommand assignmentRequest = new();
+    private UnassignActualAssignmentCommand unassignmentRequest = new();
+    private decimal employeeCurrentAllocation = 0;
+    private decimal costVariance = 0;
     private SfToast? toastObj;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         try
         {
-            await LoadProjects();
-            await LoadRoles();
+            if (_disposed) return;
 
-            // Handle project-specific navigation
-            if (ProjectId.HasValue)
+            await LoadProjects();
+            if (_disposed) return;
+
+            await LoadRoles();
+            if (_disposed) return;
+
+            await LoadEmployees();
+            if (_disposed) return;
+
+            if (EffectiveProjectId.HasValue)
             {
                 await ValidateAndSetCurrentProject();
-                // Early return if navigation occurred due to invalid project
-                if (currentProject == null)
-                {
-                    return;
-                }
+                if (_disposed || currentProject == null) return;
             }
             else
             {
-                selectedProjectId = null;
+                // Defer redirect to OnAfterRenderAsync to avoid disposal during diff
+                _shouldRedirectToProjects = true;
+                return;
             }
 
             await LoadPlannedSlots();
         }
+        catch when (_disposed)
+        {
+            // ignore if disposed during awaits
+        }
         catch (Exception ex)
         {
+            if (_disposed) return;
             await ShowError($"Error initializing page: {ex.Message}");
-            // If ProjectId was specified but initialization failed, navigate to projects list
-            if (ProjectId.HasValue)
-            {
-                Navigation.NavigateTo("/projects");
-            }
+            _shouldRedirectToProjects = true; // also defer
         }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_disposed) return Task.CompletedTask;
+
+        if (_shouldRedirectToProjects)
+        {
+            _shouldRedirectToProjects = false;
+            // navigate AFTER render to avoid disposing mid-diff
+            Navigation.NavigateTo("/projects");
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadProjects()
     {
         try
         {
-            projects = (await ProjectService.GetAllAsync()).ToList();
+            var list = await ProjectService.GetAllAsync();
+            if (_disposed) return;
+            projects = list.ToList();
         }
         catch (Exception ex)
         {
+            if (_disposed) return;
             await ShowError($"Error loading projects: {ex.Message}");
         }
     }
@@ -314,86 +630,109 @@ else if (plannedSlots != null)
     {
         try
         {
-            roles = (await RolesCatalogService.GetAllAsync()).ToList();
+            var list = await RolesCatalogService.GetAllAsync();
+            if (_disposed) return;
+            roles = list.ToList();
         }
         catch (Exception ex)
         {
+            if (_disposed) return;
             await ShowError($"Error loading roles: {ex.Message}");
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            var list = await EmployeeService.GetAllAsync();
+            if (_disposed) return;
+            employees = list.ToList();
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            await ShowError($"Error loading employees: {ex.Message}");
         }
     }
 
     private async Task ValidateAndSetCurrentProject()
     {
-        if (ProjectId.HasValue)
-        {
-            if (projects == null || !projects.Any())
-            {
-                // No projects available - navigate to projects list
-                await ShowError("No projects found. Redirecting to projects list.");
-                Navigation.NavigateTo("/projects");
-                return;
-            }
+        if (_disposed) return;
+        if (!EffectiveProjectId.HasValue) return;
 
-            currentProject = projects.FirstOrDefault(p => p.Id == ProjectId.Value);
-            if (currentProject != null)
-            {
-                selectedProjectId = ProjectId.Value;
-            }
-            else
-            {
-                // Project not found or invalid ID - navigate to projects list
-                await ShowError($"Project with ID {ProjectId.Value} not found. Redirecting to projects list.");
-                Navigation.NavigateTo("/projects");
-                return;
-            }
+        if (projects == null || !projects.Any())
+        {
+            await ShowError("No projects found.");
+            _shouldRedirectToProjects = true; // defer
+            return;
+        }
+
+        currentProject = projects.FirstOrDefault(p => p.Id == EffectiveProjectId.Value);
+        if (currentProject != null)
+        {
+            selectedProjectId = EffectiveProjectId.Value;
+        }
+        else
+        {
+            await ShowError($"Project with ID {EffectiveProjectId.Value} not found.");
+            _shouldRedirectToProjects = true; // defer
         }
     }
 
     private async Task LoadPlannedSlots()
     {
+        if (_disposed) return;
+
         isLoading = true;
         try
         {
-            var projectIdToFilter = ProjectId ?? selectedProjectId;
+            var projectIdToFilter = EffectiveProjectId ?? selectedProjectId;
 
             if (projectIdToFilter.HasValue)
             {
-                plannedSlots = await PlannedTeamSlotService.GetSlotsByProjectAsync(projectIdToFilter.Value);
+                var slots = await PlannedTeamSlotService.GetSlotsByProjectAsync(projectIdToFilter.Value);
+                if (_disposed) return;
+                plannedSlots = slots?.ToList() ?? new List<PlannedTeamSlotDto>();
             }
             else
             {
-                // Load all slots from all projects
                 plannedSlots = new List<PlannedTeamSlotDto>();
                 if (projects != null)
                 {
                     foreach (var project in projects)
                     {
                         var projectSlots = await PlannedTeamSlotService.GetSlotsByProjectAsync(project.Id);
-                        plannedSlots.AddRange(projectSlots);
+                        if (_disposed) return;
+                        if (projectSlots != null) plannedSlots.AddRange(projectSlots);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
+            if (_disposed) return;
             await ShowError($"Error loading planned slots: {ex.Message}");
         }
         finally
         {
-            isLoading = false;
+            if (!_disposed) isLoading = false;
         }
     }
 
     private async Task OnProjectChanged(ChangeEventArgs<Guid?, ProjectDto> args)
     {
+        if (_disposed) return;
         selectedProjectId = args.Value;
         await LoadPlannedSlots();
     }
 
     private void ShowCreateModal()
     {
+        if (_disposed) return;
+
         isEdit = false;
-        var projectIdToUse = ProjectId ?? selectedProjectId ?? Guid.Empty;
+        var projectIdToUse = EffectiveProjectId ?? selectedProjectId ?? Guid.Empty;
 
         slotRequest = new CreatePlannedTeamSlotCommand
         {
@@ -406,6 +745,8 @@ else if (plannedSlots != null)
 
     private void ShowEditModal(PlannedTeamSlotDto slot)
     {
+        if (_disposed) return;
+
         isEdit = true;
         selectedSlot = slot;
         slotRequest = new CreatePlannedTeamSlotCommand
@@ -421,12 +762,98 @@ else if (plannedSlots != null)
         showModal = true;
     }
 
+    private void ShowAssignmentModal(PlannedTeamSlotDto slot)
+    {
+        if (_disposed) return;
+
+        selectedSlot = slot;
+        selectedEmployee = null;
+        costVariance = 0;
+        employeeCurrentAllocation = 0;
+
+        if (employees != null)
+            availableEmployees = employees.Where(e => e.IsActive).ToList();
+
+        assignmentRequest = new CreateActualAssignmentCommand
+        {
+            ProjectId = slot.ProjectId,
+            PlannedTeamSlotId = slot.Id,
+            StartDate = DateTime.Today,
+            AllocationPercent = slot.AllocationPercent
+        };
+
+        showAssignmentModal = true;
+    }
+
+    private async Task OnAssignmentEmployeeChanged(ChangeEventArgs<Guid, EmployeeDto> args)
+    {
+        if (_disposed) return;
+
+        assignmentRequest.EmployeeId = args.Value;
+        selectedEmployee = availableEmployees?.FirstOrDefault(e => e.Id == args.Value);
+
+        if (selectedEmployee != null)
+        {
+            var startDate = assignmentRequest.StartDate;
+            var endDate = assignmentRequest.EndDate ?? currentProject?.EndDate ?? DateTime.Today.AddMonths(1);
+
+            try
+            {
+                var alloc = await AssignmentService.GetEmployeeAllocationAsync(selectedEmployee.Id, startDate, endDate);
+                if (_disposed) return;
+
+                employeeCurrentAllocation = alloc;
+                CalculateCostVariance();
+
+                if (!_disposed)
+                {
+                    // Avoid calling StateHasChanged if disposed
+                    StateHasChanged();
+                }
+            }
+            catch when (_disposed)
+            {
+                // ignore
+            }
+            catch
+            {
+                if (_disposed) return;
+                employeeCurrentAllocation = 0;
+            }
+        }
+        else
+        {
+            if (_disposed) return;
+            employeeCurrentAllocation = 0;
+            costVariance = 0;
+        }
+    }
+
+    private void CalculateCostVariance()
+    {
+        if (_disposed) return;
+
+        if (selectedEmployee != null && selectedSlot != null && currentProject != null)
+        {
+            var empCommissionAmount = (selectedEmployee.CommissionPercent / 100m) * currentProject.ProjectPrice;
+            var empCostPerMonth = selectedEmployee.Salary + selectedEmployee.MonthlyIncentive + empCommissionAmount;
+
+            var plannedCommissionAmount = (selectedSlot.PlannedCommissionPercent / 100m) * currentProject.ProjectPrice;
+            var plannedCostPerMonth = selectedSlot.PlannedSalary + selectedSlot.PlannedIncentive + plannedCommissionAmount;
+
+            costVariance = empCostPerMonth - plannedCostPerMonth;
+        }
+    }
+
     private async Task HandleSubmit()
     {
+        if (_disposed) return;
+
         isSubmitting = true;
         try
         {
-            var currentUser = "current-user"; // TODO: Get actual user ID
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
 
             if (isEdit && selectedSlot != null)
             {
@@ -442,71 +869,231 @@ else if (plannedSlots != null)
                     RowVersion = selectedSlot.RowVersion ?? new byte[0]
                 };
 
-                await PlannedTeamSlotService.UpdateSlotAsync(updateCommand, currentUser);
+                await PlannedTeamSlotService.UpdateSlotAsync(updateCommand, userId);
+                if (_disposed) return;
                 await ShowSuccess("Planning slot updated successfully!");
             }
             else
             {
-                await PlannedTeamSlotService.CreateSlotAsync(slotRequest, currentUser);
+                await PlannedTeamSlotService.CreateSlotAsync(slotRequest, userId);
+                if (_disposed) return;
                 await ShowSuccess("Planning slot created successfully!");
             }
 
             await LoadPlannedSlots();
+            if (_disposed) return;
             HideModal();
         }
         catch (Exception ex)
         {
+            if (_disposed) return;
             await ShowError($"Error saving planning slot: {ex.Message}");
         }
         finally
         {
-            isSubmitting = false;
+            if (!_disposed) isSubmitting = false;
+        }
+    }
+
+    private async Task HandleAssignmentSubmit()
+    {
+        if (_disposed) return;
+
+        isAssignmentSubmitting = true;
+        try
+        {
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+            var result = await AssignmentService.CreateAsync(assignmentRequest, userId);
+
+            if (_disposed) return;
+
+            if (result.IsSuccessful)
+            {
+                //add warns if any to the toast
+                if (result.Warnings.Any())
+                {
+                    var warns = string.Join("<br/>", result.Warnings);
+                    await ShowError($"Assignment created with warnings:<br/>{warns}");
+                }
+                else
+                {
+                    await ShowSuccess("Assignment created successfully and is pending approval!");
+                }
+
+                await LoadPlannedSlots();
+                if (_disposed) return;
+                HideAssignmentModal();
+            }
+            else
+            {
+                //add the error messages to the toast
+                var errors = string.Join("<br/>", result.Errors);
+                await ShowError($"Assignment creation failed:<br/>{errors}");
+
+
+                //await ShowError("Assignment creation failed. Please check the details and try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            await ShowError($"Error creating assignment: {ex.Message}");
+        }
+        finally
+        {
+            if (!_disposed) isAssignmentSubmitting = false;
         }
     }
 
     private void HideModal()
     {
+        if (_disposed) return;
         showModal = false;
         selectedSlot = null;
         slotRequest = new CreatePlannedTeamSlotCommand();
     }
 
+    private void HideAssignmentModal()
+    {
+        if (_disposed) return;
+        showAssignmentModal = false;
+        selectedSlot = null;
+        selectedEmployee = null;
+        assignmentRequest = new CreateActualAssignmentCommand();
+        availableEmployees = new List<EmployeeDto>();
+        employeeCurrentAllocation = 0;
+        costVariance = 0;
+    }
+
+    private async Task ShowUnassignmentModal(PlannedTeamSlotDto slot)
+    {
+        if (_disposed) return;
+
+        selectedSlot = slot;
+        selectedAssignment = null;
+
+        try
+        {
+            var assignments = await AssignmentService.GetAssignmentsAsync(slot.ProjectId, null);
+            if (_disposed) return;
+
+            // Find assignment linked to this planned slot that is active or planned and not yet ended
+            // Priority: 1) Active assignments, 2) Planned assignments
+            selectedAssignment = assignments
+                .Where(a => a.PlannedTeamSlotId == slot.Id &&
+                           (a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Planned))
+                .OrderByDescending(a => a.Status == AssignmentStatus.Active ? 1 : 0) // Prefer Active over Planned
+                .ThenByDescending(a => a.StartDate)
+                .FirstOrDefault();
+
+            if (selectedAssignment != null)
+            {
+                unassignmentRequest = new UnassignActualAssignmentCommand
+                {
+                    AssignmentId = selectedAssignment.Id,
+                    EndDate = DateTime.Today
+                };
+
+                showUnassignmentModal = true;
+            }
+            else
+            {
+                await ShowError("No active assignment found for this slot.");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            await ShowError($"Error loading assignment details: {ex.Message}");
+        }
+    }
+
+    private async Task HandleUnassignmentSubmit()
+    {
+        if (_disposed || selectedAssignment == null) return;
+
+        isUnassignmentSubmitting = true;
+        try
+        {
+            var currentUser = await CurrentUserService.GetCurrentUserAsync();
+            var userId = currentUser?.Id ?? "System";
+            await AssignmentService.UnassignAsync(unassignmentRequest, userId);
+            if (_disposed) return;
+
+            await ShowSuccess("Employee unassigned successfully!");
+            await LoadPlannedSlots();
+            if (_disposed) return;
+            HideUnassignmentModal();
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            await ShowError($"Error unassigning employee: {ex.Message}");
+        }
+        finally
+        {
+            if (!_disposed) isUnassignmentSubmitting = false;
+        }
+    }
+
+    private void HideUnassignmentModal()
+    {
+        if (_disposed) return;
+        showUnassignmentModal = false;
+        selectedSlot = null;
+        selectedAssignment = null;
+        unassignmentRequest = new UnassignActualAssignmentCommand();
+    }
+
     private void ShowDeleteConfirmation(PlannedTeamSlotDto slot)
     {
+        if (_disposed) return;
         selectedSlot = slot;
         showDeleteDialog = true;
     }
 
     private void CancelDelete()
     {
+        if (_disposed) return;
         showDeleteDialog = false;
         selectedSlot = null;
     }
 
     private async Task ConfirmDelete()
     {
+        if (_disposed) return;
+
         if (selectedSlot != null)
         {
             try
             {
-                var currentUser = "current-user"; // TODO: Get actual user ID
-                await PlannedTeamSlotService.DeleteSlotAsync(selectedSlot.Id, currentUser);
+                var currentUser = await CurrentUserService.GetCurrentUserAsync();
+                var userId = currentUser?.Id ?? "System";
+                await PlannedTeamSlotService.DeleteSlotAsync(selectedSlot.Id, userId);
+                if (_disposed) return;
+
                 await LoadPlannedSlots();
+                if (_disposed) return;
+
                 await ShowSuccess("Planning slot deleted successfully!");
             }
             catch (Exception ex)
             {
+                if (_disposed) return;
                 await ShowError($"Error deleting planning slot: {ex.Message}");
             }
         }
 
-        showDeleteDialog = false;
-        selectedSlot = null;
+        if (!_disposed)
+        {
+            showDeleteDialog = false;
+            selectedSlot = null;
+        }
     }
 
     private string GetStatusBadgeClass(PlannedTeamStatus status)
-    {
-        return status switch
+        => status switch
         {
             PlannedTeamStatus.Planned => "bg-secondary",
             PlannedTeamStatus.Active => "bg-success",
@@ -514,19 +1101,11 @@ else if (plannedSlots != null)
             PlannedTeamStatus.Cancelled => "bg-danger",
             _ => "bg-secondary"
         };
-    }
-
-    private void NavigateToActualAssignment(PlannedTeamSlotDto slot)
-    {
-        // Navigate to assignments page with the planned slot context
-        // This will allow managers to assign employees to this active planned slot
-        var url = $"/assignments?plannedSlotId={slot.Id}&projectId={slot.ProjectId}";
-        Navigation.NavigateTo(url);
-    }
 
     private async Task ShowSuccess(string message)
     {
-        if (toastObj != null)
+        if (_disposed || toastObj is null) return;
+        try
         {
             await toastObj.ShowAsync(new ToastModel
             {
@@ -536,11 +1115,13 @@ else if (plannedSlots != null)
                 Icon = "fas fa-check"
             });
         }
+        catch when (_disposed) { }
     }
 
     private async Task ShowError(string message)
     {
-        if (toastObj != null)
+        if (_disposed || toastObj is null) return;
+        try
         {
             await toastObj.ShowAsync(new ToastModel
             {
@@ -550,6 +1131,13 @@ else if (plannedSlots != null)
                 Icon = "fas fa-exclamation-triangle"
             });
         }
+        catch when (_disposed) { }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        try { _cts.Cancel(); _cts.Dispose(); } catch { }
+        return ValueTask.CompletedTask;
     }
 }
-

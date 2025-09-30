@@ -34,6 +34,18 @@ namespace ProjeX.Application.ActualAssignment
         public string ModifiedBy { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+
+        // Extended properties for team planning dual-grid view
+        public decimal UtilizationPercent { get; set; }
+        public int DurationDays { get; set; }
+        public decimal PlannedCostShare { get; set; }
+        public decimal ActualCost { get; set; }
+        public decimal CostVariance { get; set; }
+        public DateTime TimelineStart { get; set; }
+        public DateTime TimelineEnd { get; set; }
+        public decimal EmployeeSalary { get; set; }
+        public decimal EmployeeMonthlyIncentive { get; set; }
+        public decimal EmployeeCommissionPercent { get; set; }
     }
 }
 

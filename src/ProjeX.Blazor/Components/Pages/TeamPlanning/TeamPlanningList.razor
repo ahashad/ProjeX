@@ -77,13 +77,15 @@
 }
 else if (plannedSlots != null)
 {
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-body">
-            <SfGrid DataSource="@plannedSlots" AllowPaging="true" AllowSorting="true"
+            <SfGrid @ref="plannedSlotsGrid" DataSource="@plannedSlots" AllowPaging="true" AllowSorting="true"
                     AllowFiltering="true" AllowSelection="true" PageSize="15"
                     Toolbar="@(new List<string>() { "Search" })">
                 <GridPageSettings PageSize="15"></GridPageSettings>
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                <GridEvents TValue="PlannedTeamSlotDto" RowSelected="OnSlotSelected"></GridEvents>
                 <GridColumns>
                     @if (!EffectiveProjectId.HasValue)
                     {
@@ -159,6 +161,147 @@ else if (plannedSlots != null)
             </SfGrid>
         </div>
     </div>
+
+    <!-- Grid 2: Assignments for Selected Slot -->
+    @if (selectedSlot != null && showAssignmentsGrid)
+    {
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Assignments for @selectedSlot.RoleName (@selectedSlot.ProjectName)
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => { selectedSlot = null; slotAssignments = null; }">
+                        <i class="fas fa-times"></i> Clear Selection
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (isLoadingAssignments)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading assignments...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading assignments...</p>
+                    </div>
+                }
+                else if (slotAssignments == null || !slotAssignments.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No assignments found for this slot</h5>
+                        <p class="text-muted">Create an assignment to see it here.</p>
+                    </div>
+                }
+                else
+                {
+                    <SfGrid DataSource="@slotAssignments" AllowPaging="true" AllowSorting="true"
+                            AllowFiltering="true" PageSize="15"
+                            Toolbar="@(new List<string>() { "Search", "ExcelExport", "PdfExport" })">
+                        <GridPageSettings PageSize="15"></GridPageSettings>
+                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                        <GridColumns>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.EmployeeName) HeaderText="Employee" Width="160"></GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.RoleName) HeaderText="Position" Width="120"></GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.Status) HeaderText="Status" Width="100">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                        var badgeClass = assignment?.Status == AssignmentStatus.Active ? "bg-success" : "bg-primary";
+                                    }
+                                    <span class="badge @badgeClass">@assignment?.Status</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.StartDate) HeaderText="Start Date" Width="110" Format="d"></GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.EndDate) HeaderText="End Date" Width="110" Format="d">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                    }
+                                    <span>@(assignment?.EndDate?.ToString("yyyy-MM-dd") ?? "Ongoing")</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.AllocationPercent) HeaderText="Allocation %" Width="110" Format="N1">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                    }
+                                    <span>@assignment?.AllocationPercent.ToString("F1")%</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.UtilizationPercent) HeaderText="Utilization %" Width="120" Format="N1">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                    }
+                                    <span>@assignment?.UtilizationPercent.ToString("F1")%</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.PlannedCostShare) HeaderText="Planned Cost" Width="120" Format="C"></GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.ActualCost) HeaderText="Actual Cost" Width="120" Format="C"></GridColumn>
+                            <GridColumn Field=@nameof(ActualAssignmentDto.CostVariance) HeaderText="Cost Variance" Width="130">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                        var varianceClass = assignment?.CostVariance <= 0 ? "text-success" : "text-danger";
+                                        var varianceIcon = assignment?.CostVariance <= 0 ? "fa-arrow-down" : "fa-arrow-up";
+                                    }
+                                    <span class="@varianceClass">
+                                        <i class="fas @varianceIcon me-1"></i>
+                                        @assignment?.CostVariance.ToString("C")
+                                    </span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Timeline" Width="200" AllowFiltering="false" AllowSorting="false">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                        if (assignment != null && selectedSlot != null)
+                                        {
+                                            var slotStart = selectedSlot.ProjectId != Guid.Empty ? currentProject?.StartDate ?? assignment.ProjectStartDate : assignment.ProjectStartDate;
+                                            var slotEnd = selectedSlot.ProjectId != Guid.Empty ? currentProject?.EndDate ?? assignment.ProjectEndDate : assignment.ProjectEndDate;
+                                            var totalDays = (slotEnd - slotStart).Days;
+                                            var assignmentStartOffset = ((assignment.TimelineStart - slotStart).Days / (double)totalDays) * 100;
+                                            var assignmentDuration = ((assignment.TimelineEnd - assignment.TimelineStart).Days / (double)totalDays) * 100;
+                                            var widthPercent = Math.Max(assignmentDuration, 2);
+                                            var leftPercent = Math.Max(assignmentStartOffset, 0);
+                                            <div class="timeline-container" style="position: relative; height: 20px; background-color: #e9ecef; border-radius: 4px;">
+                                                <div class="timeline-bar" style="position: absolute; left: @(leftPercent.ToString("F2"))%; width: @(widthPercent.ToString("F2"))%; height: 100%; background-color: #0d6efd; border-radius: 4px;" title="@assignment.StartDate.ToString("d") - @(assignment.EndDate?.ToString("d") ?? "Ongoing")"></div>
+                                            </div>
+                                        }
+                                    }
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Actions" Width="150" AllowFiltering="false" AllowSorting="false">
+                                <Template>
+                                    @{
+                                        var assignment = (context as ActualAssignmentDto);
+                                    }
+                                    <AuthorizeView Policy="ManagerOrAdmin" Context="gridAuth2">
+                                        <Authorized>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-info" title="View Details" @onclick="() => ShowDetailsModal(assignment!)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                @if (assignment?.Status == AssignmentStatus.Active)
+                                                {
+                                                    <button class="btn btn-outline-warning" title="Unassign" @onclick="() => ShowUnassignModalFromGrid(assignment!)">
+                                                        <i class="fas fa-user-times"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </Template>
+                            </GridColumn>
+                        </GridColumns>
+                    </SfGrid>
+                }
+            </div>
+        </div>
+    }
 }
 
 <!-- Create/Edit Planning Slot Modal -->
@@ -515,6 +658,83 @@ else if (plannedSlots != null)
     </DialogButtons>
 </SfDialog>
 
+<!-- Assignment Details Modal -->
+<SfDialog @bind-Visible="@showDetailsModalFlag" Width="800px" Height="700px" IsModal="true">
+    <DialogTemplates>
+        <Header>Assignment Details</Header>
+        <Content>
+            @if (selectedAssignment != null)
+            {
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Employee Information</h6>
+                        <p><strong>Employee:</strong> @selectedAssignment.EmployeeName</p>
+                        <p><strong>Email:</strong> @selectedAssignment.EmployeeEmail</p>
+                        <p><strong>Phone:</strong> @selectedAssignment.EmployeePhone</p>
+                        <p><strong>Role:</strong> @selectedAssignment.RoleName</p>
+                        <p><strong>Salary:</strong> @selectedAssignment.EmployeeSalary.ToString("C")</p>
+                        <p><strong>Monthly Incentive:</strong> @selectedAssignment.EmployeeMonthlyIncentive.ToString("C")</p>
+
+                        <h6 class="mt-3">Assignment Details</h6>
+                        <p><strong>Allocation:</strong> @selectedAssignment.AllocationPercent.ToString("F1")%</p>
+                        <p><strong>Start Date:</strong> @selectedAssignment.StartDate.ToString("yyyy-MM-dd")</p>
+                        <p><strong>End Date:</strong> @(selectedAssignment.EndDate?.ToString("yyyy-MM-dd") ?? "Ongoing")</p>
+                        <p><strong>Duration:</strong> @selectedAssignment.DurationDays days</p>
+                        <p><strong>Utilization:</strong> @selectedAssignment.UtilizationPercent.ToString("F1")%</p>
+                        <p><strong>Status:</strong> <span class="badge @(selectedAssignment.Status == AssignmentStatus.Active ? "bg-success" : "bg-primary")">@selectedAssignment.Status</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Project Information</h6>
+                        <p><strong>Project:</strong> @selectedAssignment.ProjectName</p>
+                        <p><strong>Client:</strong> @selectedAssignment.ClientName</p>
+                        <p><strong>Project Period:</strong> @selectedAssignment.ProjectStartDate.ToString("yyyy-MM-dd") - @selectedAssignment.ProjectEndDate.ToString("yyyy-MM-dd")</p>
+
+                        <h6 class="mt-3">Cost Analysis</h6>
+                        <p><strong>Planned Cost:</strong> @selectedAssignment.PlannedCostShare.ToString("C")</p>
+                        <p><strong>Actual Cost:</strong> @selectedAssignment.ActualCost.ToString("C")</p>
+                        <p>
+                            <strong>Cost Variance:</strong>
+                            <span class="@(selectedAssignment.CostVariance <= 0 ? "text-success" : "text-danger")">
+                                @selectedAssignment.CostVariance.ToString("C")
+                                @if (selectedAssignment.CostVariance <= 0)
+                                {
+                                    <i class="fas fa-check-circle ms-1"></i>
+                                    <small>(Under/On Budget)</small>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-exclamation-triangle ms-1"></i>
+                                    <small>(Over Budget)</small>
+                                }
+                            </span>
+                        </p>
+
+                        @if (!string.IsNullOrEmpty(selectedAssignment.Notes))
+                        {
+                            <h6 class="mt-3">Notes</h6>
+                            <p>@selectedAssignment.Notes</p>
+                        }
+
+                        <h6 class="mt-3">Audit Information</h6>
+                        <p><strong>Created:</strong> @selectedAssignment.CreatedAt.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.CreatedBy</p>
+                        @if (selectedAssignment.ModifiedAt.HasValue)
+                        {
+                            <p><strong>Modified:</strong> @selectedAssignment.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.ModifiedBy</p>
+                        }
+                        @if (selectedAssignment.ApprovedOn.HasValue)
+                        {
+                            <p><strong>Approved:</strong> @selectedAssignment.ApprovedOn.Value.ToString("yyyy-MM-dd HH:mm") by @selectedAssignment.ApprovedByUserId</p>
+                        }
+                    </div>
+                </div>
+            }
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Close" IsPrimary="true" OnClick="@HideDetailsModal" />
+    </DialogButtons>
+</SfDialog>
+
 <SfToast @ref="toastObj" Title="Notification" Timeout="5000" ShowProgressBar="false"></SfToast>
 
 @code {
@@ -555,6 +775,13 @@ else if (plannedSlots != null)
     private decimal employeeCurrentAllocation = 0;
     private decimal costVariance = 0;
     private SfToast? toastObj;
+
+    // Grid 2 properties
+    private SfGrid<PlannedTeamSlotDto>? plannedSlotsGrid;
+    private List<ActualAssignmentDto>? slotAssignments;
+    private bool isLoadingAssignments = false;
+    private bool showAssignmentsGrid = true; // Feature flag
+    private bool showDetailsModalFlag = false;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -1044,6 +1271,69 @@ else if (plannedSlots != null)
         selectedSlot = null;
         selectedAssignment = null;
         unassignmentRequest = new UnassignActualAssignmentCommand();
+    }
+
+    // Grid 2: Row selection and assignment loading
+    private async Task OnSlotSelected(RowSelectEventArgs<PlannedTeamSlotDto> args)
+    {
+        if (_disposed || args.Data == null) return;
+
+        selectedSlot = args.Data;
+        await LoadSlotAssignments();
+    }
+
+    private async Task LoadSlotAssignments()
+    {
+        if (_disposed || selectedSlot == null) return;
+
+        isLoadingAssignments = true;
+        try
+        {
+            slotAssignments = await AssignmentService.GetAssignmentsBySlotAsync(selectedSlot.Id, selectedSlot.RoleId);
+            if (_disposed) return;
+
+            if (!_disposed)
+            {
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            await ShowError($"Error loading assignments: {ex.Message}");
+        }
+        finally
+        {
+            if (!_disposed) isLoadingAssignments = false;
+        }
+    }
+
+    private void ShowUnassignModalFromGrid(ActualAssignmentDto assignment)
+    {
+        if (_disposed) return;
+
+        selectedAssignment = assignment;
+        unassignmentRequest = new UnassignActualAssignmentCommand
+        {
+            AssignmentId = assignment.Id,
+            EndDate = DateTime.Today
+        };
+
+        showUnassignmentModal = true;
+    }
+
+    private void ShowDetailsModal(ActualAssignmentDto assignment)
+    {
+        if (_disposed) return;
+        selectedAssignment = assignment;
+        showDetailsModalFlag = true;
+    }
+
+    private void HideDetailsModal()
+    {
+        if (_disposed) return;
+        showDetailsModalFlag = false;
+        selectedAssignment = null;
     }
 
     private void ShowDeleteConfirmation(PlannedTeamSlotDto slot)

@@ -13,5 +13,6 @@ namespace ProjeX.Application.ActualAssignment
         Task<ActualAssignmentDto?> GetByIdAsync(Guid id);
         Task<decimal> GetEmployeeAllocationAsync(Guid employeeId, DateTime startDate, DateTime endDate);
         Task<List<EmployeeUtilizationPointDto>> GetEmployeeUtilizationAsync(Guid employeeId, DateTime from, DateTime to);
+        Task<List<ActualAssignmentDto>> GetAssignmentsBySlotAsync(Guid plannedTeamSlotId, Guid roleId);
     }
 }

@@ -527,6 +527,73 @@ namespace ProjeX.Application.ActualAssignment
 
             return result;
         }
+
+        public async Task<List<ActualAssignmentDto>> GetAssignmentsBySlotAsync(Guid plannedTeamSlotId, Guid roleId)
+        {
+            var assignments = await _context.ActualAssignments
+                .AsNoTracking()
+                .Include(a => a.PlannedTeamSlot)
+                    .ThenInclude(pts => pts.Project)
+                .Include(a => a.PlannedTeamSlot)
+                    .ThenInclude(pts => pts.Role)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e.Role)
+                .Include(a => a.Project)
+                    .ThenInclude(p => p.Client)
+                .Where(a => a.PlannedTeamSlotId == plannedTeamSlotId &&
+                           a.Employee.RoleId == roleId &&
+                           !a.IsDeleted &&
+                           (a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Completed))
+                .OrderBy(a => a.StartDate)
+                .ToListAsync();
+
+            var dtos = new List<ActualAssignmentDto>();
+
+            foreach (var assignment in assignments)
+            {
+                var dto = _mapper.Map<ActualAssignmentDto>(assignment);
+
+                // Calculate duration in days
+                var endDate = assignment.EndDate ?? DateTime.Today;
+                dto.DurationDays = (endDate - assignment.StartDate).Days;
+
+                // Calculate utilization percentage (allocation * days worked / total days available)
+                var projectStartDate = assignment.Project.StartDate ?? assignment.StartDate;
+                var projectEndDate = assignment.Project.EndDate ?? DateTime.Today;
+                var totalDaysInProject = (projectEndDate - projectStartDate).Days;
+                dto.UtilizationPercent = totalDaysInProject > 0
+                    ? (assignment.AllocationPercent * dto.DurationDays) / totalDaysInProject
+                    : 0;
+
+                // Get employee cost information
+                dto.EmployeeSalary = assignment.Employee.Salary;
+                dto.EmployeeMonthlyIncentive = assignment.Employee.MonthlyIncentive;
+                dto.EmployeeCommissionPercent = assignment.Employee.CommissionPercent;
+
+                // Calculate actual cost (monthly salary + incentive + commission share)
+                var monthsWorked = dto.DurationDays / 30.0m;
+                var commissionAmount = (assignment.Employee.CommissionPercent / 100m) * assignment.Project.ProjectPrice;
+                dto.ActualCost = (assignment.Employee.Salary + assignment.Employee.MonthlyIncentive + commissionAmount) * monthsWorked;
+
+                // Calculate planned cost share
+                var plannedCommissionAmount = (assignment.PlannedTeamSlot.PlannedCommissionPercent / 100m) * assignment.Project.ProjectPrice;
+                var plannedMonthsCost = assignment.PlannedTeamSlot.PeriodMonths;
+                dto.PlannedCostShare = (assignment.PlannedTeamSlot.PlannedSalary +
+                                       assignment.PlannedTeamSlot.PlannedIncentive +
+                                       plannedCommissionAmount) * plannedMonthsCost;
+
+                // Calculate cost variance (positive = over budget, negative = under budget)
+                dto.CostVariance = dto.ActualCost - dto.PlannedCostShare;
+
+                // Set timeline boundaries
+                dto.TimelineStart = assignment.StartDate;
+                dto.TimelineEnd = assignment.EndDate ?? DateTime.Today;
+
+                dtos.Add(dto);
+            }
+
+            return dtos;
+        }
     }
 
     // Helper classes for timeline validation

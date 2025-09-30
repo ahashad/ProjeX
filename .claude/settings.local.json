@@ -34,7 +34,9 @@
       "Bash(dotnet script:*)",
       "Bash(dotnet run:*)",
       "Bash(dotnet ef database drop:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(Select-String -Pattern \"error|warning\" -Context 0,1)",
+      "Bash(Select-Object -First 50)"
     ],
     "deny": [],
     "ask": []

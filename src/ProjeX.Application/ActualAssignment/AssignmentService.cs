@@ -541,7 +541,7 @@ namespace ProjeX.Application.ActualAssignment
                 .Include(a => a.Project)
                     .ThenInclude(p => p.Client)
                 .Where(a => a.PlannedTeamSlotId == plannedTeamSlotId &&
-                           a.Employee.RoleId == roleId &&
+                           //a.Employee.RoleId == roleId &&
                            !a.IsDeleted &&
                            (a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Completed))
                 .OrderBy(a => a.StartDate)
@@ -562,25 +562,26 @@ namespace ProjeX.Application.ActualAssignment
                 var projectEndDate = assignment.Project.EndDate ?? DateTime.Today;
                 var totalDaysInProject = (projectEndDate - projectStartDate).Days;
                 dto.UtilizationPercent = totalDaysInProject > 0
-                    ? (assignment.AllocationPercent * dto.DurationDays) / totalDaysInProject
+                    ? (assignment.AllocationPercent * dto.DurationDays) / (decimal)totalDaysInProject
                     : 0;
 
                 // Get employee cost information
-                dto.EmployeeSalary = assignment.Employee.Salary;
-                dto.EmployeeMonthlyIncentive = assignment.Employee.MonthlyIncentive;
-                dto.EmployeeCommissionPercent = assignment.Employee.CommissionPercent;
+                dto.EmployeeSalary = (assignment.Employee?.Salary ?? 0);
+                dto.EmployeeMonthlyIncentive = (assignment.Employee?.MonthlyIncentive ?? 0);
+                dto.EmployeeCommissionPercent = (assignment.Employee?.CommissionPercent ?? 0);
 
                 // Calculate actual cost (monthly salary + incentive + commission share)
                 var monthsWorked = dto.DurationDays / 30.0m;
-                var commissionAmount = (assignment.Employee.CommissionPercent / 100m) * assignment.Project.ProjectPrice;
-                dto.ActualCost = (assignment.Employee.Salary + assignment.Employee.MonthlyIncentive + commissionAmount) * monthsWorked;
+                var commissionAmount = ((assignment.Employee?.CommissionPercent ?? 0) / 100m) * assignment.Project.ProjectPrice;
+                dto.ActualCost = ((assignment.Employee?.Salary ?? 0) + (assignment.Employee?.MonthlyIncentive ?? 0) + commissionAmount) * monthsWorked;
 
                 // Calculate planned cost share
-                var plannedCommissionAmount = (assignment.PlannedTeamSlot.PlannedCommissionPercent / 100m) * assignment.Project.ProjectPrice;
-                var plannedMonthsCost = assignment.PlannedTeamSlot.PeriodMonths;
-                dto.PlannedCostShare = (assignment.PlannedTeamSlot.PlannedSalary +
-                                       assignment.PlannedTeamSlot.PlannedIncentive +
-                                       plannedCommissionAmount) * plannedMonthsCost;
+                var plannedCommissionAmount = ((assignment.PlannedTeamSlot?.PlannedCommissionPercent??0) / 100m) * assignment.Project.ProjectPrice;
+                var plannedMonthsCost = (assignment.PlannedTeamSlot?.PeriodMonths ?? 0);
+                dto.PlannedCostShare = ((assignment.PlannedTeamSlot?.PlannedSalary ?? 0) +
+                                       (assignment.PlannedTeamSlot?.PlannedIncentive ?? 0) +
+                                       plannedCommissionAmount) * plannedMonthsCost
+                                                                * (dto.UtilizationPercent/100m);
 
                 // Calculate cost variance (positive = over budget, negative = under budget)
                 dto.CostVariance = dto.ActualCost - dto.PlannedCostShare;

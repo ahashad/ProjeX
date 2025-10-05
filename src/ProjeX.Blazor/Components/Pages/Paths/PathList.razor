@@ -158,14 +158,14 @@
                         <div class="col-md-8">
                             <div class="mb-3">
                                 <label class="form-label">Name *</label>
-                                <InputText @bind-Value="pathRequest.Name" class="form-control" placeholder="Enter path name" />
+                                <InputText @bind-value="pathRequest.Name" class="form-control" placeholder="Enter path name" />
                                 <ValidationMessage For="@(() => pathRequest.Name)" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Project *</label>
-                                <InputSelect @bind-Value="pathRequest.ProjectId" class="form-select">
+                                <InputSelect @bind-value="pathRequest.ProjectId" class="form-select">
                                     <option value="">Select project...</option>
                                     @if (projects != null)
                                     {
@@ -184,7 +184,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Allocation Percentage</label>
-                                <InputNumber @bind-Value="pathRequest.AllowedAllocationPercentage" class="form-control" min="0" max="100" step="0.1" />
+                                <InputNumber @bind-value="pathRequest.AllowedAllocationPercentage" class="form-control" min="0" max="100" step="0.1" />
                                 <ValidationMessage For="@(() => pathRequest.AllowedAllocationPercentage)" />
                             </div>
                         </div>
@@ -192,7 +192,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Objective</label>
-                        <InputTextArea @bind-Value="pathRequest.Objective" class="form-control" rows="3" placeholder="Describe the path objective" />
+                        <InputTextArea @bind-value="pathRequest.Objective" class="form-control" rows="3" placeholder="Describe the path objective" />
                         <ValidationMessage For="@(() => pathRequest.Objective)" />
                     </div>
 
@@ -200,7 +200,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Planned Cost</label>
-                                <InputNumber @bind-Value="pathRequest.PlannedCost" class="form-control" min="0" step="0.01" />
+                                <InputNumber @bind-value="pathRequest.PlannedCost" class="form-control" min="0" step="0.01" />
                                 <ValidationMessage For="@(() => pathRequest.PlannedCost)" />
                             </div>
                         </div>
@@ -223,14 +223,14 @@
 
                     <div class="mb-3">
                         <label class="form-label">Notes</label>
-                        <InputTextArea @bind-Value="pathRequest.Notes" class="form-control" rows="2" placeholder="Additional notes" />
+                        <InputTextArea @bind-value="pathRequest.Notes" class="form-control" rows="2" placeholder="Additional notes" />
                         <ValidationMessage For="@(() => pathRequest.Notes)" />
                     </div>
 
                     @if (isEdit)
                     {
                         <div class="mb-3 form-check">
-                            <InputCheckbox @bind-Value="pathRequest.IsActive" class="form-check-input" id="isActive" />
+                            <InputCheckbox @bind-value="pathRequest.IsActive" class="form-check-input" id="isActive" />
                             <label class="form-check-label" for="isActive">Active</label>
                         </div>
                     }

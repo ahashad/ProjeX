@@ -14,6 +14,9 @@ namespace ProjeX.Domain.Entities
         public decimal PlannedSalary { get; set; }
         public decimal PlannedIncentive { get; set; }
         public decimal PlannedCommissionPercent { get; set; }
+        public decimal PlannedTickets { get; set; }
+        public decimal PlannedHoteling { get; set; }
+        public decimal PlannedOthers { get; set; }
         public decimal ComputedBudgetCost { get; set; }
         
         // Enhanced fields for advanced team management

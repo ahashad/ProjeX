@@ -26,10 +26,19 @@ namespace ProjeX.Application.PlannedTeamSlot.Commands
         
         [Range(0, double.MaxValue, ErrorMessage = "Planned incentive must be positive")]
         public decimal PlannedIncentive { get; set; }
-        
+
         [Range(0, 100, ErrorMessage = "Planned commission percent must be between 0 and 100")]
         public decimal PlannedCommissionPercent { get; set; }
-        
+
+        [Range(0, double.MaxValue, ErrorMessage = "Planned tickets must be positive")]
+        public decimal PlannedTickets { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Planned hoteling must be positive")]
+        public decimal PlannedHoteling { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Planned others must be positive")]
+        public decimal PlannedOthers { get; set; }
+
         public byte[] RowVersion { get; set; } = null!;
     }
 }

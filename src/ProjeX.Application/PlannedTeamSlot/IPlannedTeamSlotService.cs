@@ -12,5 +12,6 @@ namespace ProjeX.Application.PlannedTeamSlot
         Task DeleteSlotAsync(Guid id, string userId);
         Task RecalculateBudgetCostsAsync(Guid projectId);
         Task<Dictionary<Guid, decimal>> GetRemainingAllocationSegmentsAsync(Guid projectId);
+        Task<TeamPlanningKpiDto> GetProjectKpisAsync(Guid projectId);
     }
 }

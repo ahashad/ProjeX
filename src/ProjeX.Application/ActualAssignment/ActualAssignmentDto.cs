@@ -46,6 +46,14 @@ namespace ProjeX.Application.ActualAssignment
         public decimal EmployeeSalary { get; set; }
         public decimal EmployeeMonthlyIncentive { get; set; }
         public decimal EmployeeCommissionPercent { get; set; }
+
+        // Salary snapshot fields - point-in-time cost data for this assignment
+        public decimal? SnapshotSalary { get; set; }
+        public decimal? SnapshotMonthlyIncentive { get; set; }
+        public decimal? SnapshotCommissionPercent { get; set; }
+        public decimal? SnapshotTickets { get; set; }
+        public decimal? SnapshotHoteling { get; set; }
+        public decimal? SnapshotOthers { get; set; }
     }
 }
 

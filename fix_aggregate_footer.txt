@@ -1,0 +1,25 @@
+The issue is in the FooterTemplate of GridAggregateColumn around line 193. Replace these lines:
+
+OLD CODE (causing error):
+<div><strong>Total Planned: @Convert.ToDecimal(aggregate?.Sum).ToString("C")</strong></div>
+<div><strong>Total Actual: @Convert.ToDecimal(aggregate?.Sum).ToString("C")</strong></div>
+var totalVariance = Convert.ToDecimal(aggregate?.Sum);
+
+NEW CODE (fixed):
+<div><strong>Total Planned: @aggregate?.Sum</strong></div>
+<div><strong>Total Actual: @aggregate?.Sum</strong></div>
+// For variance, we need to parse the currency formatted string
+decimal totalVariance = 0;
+if (decimal.TryParse(aggregate?.Sum?.ToString()?.Replace("$", "").Replace(",", ""), out totalVariance))
+{
+    var varianceClass = totalVariance > 0 ? "text-danger" : (totalVariance < 0 ? "text-success" : "text-muted");
+    <div><strong class="@varianceClass">Total Variance: @aggregate?.Sum</strong></div>
+}
+else
+{
+    <div><strong>Total Variance: @aggregate?.Sum</strong></div>
+}
+
+The problem is that aggregate.Sum is already a formatted currency string (e.g., "$1,104,000.00"), 
+but Convert.ToDecimal() cannot parse currency formatting. Since we just want to display the 
+already-formatted value, we can use it directly.

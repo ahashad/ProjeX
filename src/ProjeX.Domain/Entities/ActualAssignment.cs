@@ -30,7 +30,15 @@ namespace ProjeX.Domain.Entities
         public string Notes { get; set; } = string.Empty;
         public int Priority { get; set; } = 1;
         public bool RequiresApproval { get; set; }
-        
+
+        // Salary snapshot fields - point-in-time cost data for this assignment
+        public decimal? SnapshotSalary { get; set; }
+        public decimal? SnapshotMonthlyIncentive { get; set; }
+        public decimal? SnapshotCommissionPercent { get; set; }
+        public decimal? SnapshotTickets { get; set; }
+        public decimal? SnapshotHoteling { get; set; }
+        public decimal? SnapshotOthers { get; set; }
+
         // Navigation properties
         public virtual Project Project { get; set; } = null!;
         public virtual PlannedTeamSlot? PlannedTeamSlot { get; set; }

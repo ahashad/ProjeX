@@ -33,14 +33,14 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="firstName" class="form-label">First Name *</label>
-                                <InputText id="firstName" class="form-control" @bind-Value="model.FirstName" />
+                                <InputText id="firstName" class="form-control" @bind-value="model.FirstName" />
                                 <ValidationMessage For="@(() => model.FirstName)" />
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="lastName" class="form-label">Last Name *</label>
-                                <InputText id="lastName" class="form-control" @bind-Value="model.LastName" />
+                                <InputText id="lastName" class="form-control" @bind-value="model.LastName" />
                                 <ValidationMessage For="@(() => model.LastName)" />
                             </div>
                         </div>
@@ -50,14 +50,14 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email *</label>
-                                <InputText id="email" type="email" class="form-control" @bind-Value="model.Email" />
+                                <InputText id="email" type="email" class="form-control" @bind-value="model.Email" />
                                 <ValidationMessage For="@(() => model.Email)" />
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="phone" class="form-label">Phone</label>
-                                <InputText id="phone" class="form-control" @bind-Value="model.Phone" />
+                                <InputText id="phone" class="form-control" @bind-value="model.Phone" />
                                 <ValidationMessage For="@(() => model.Phone)" />
                             </div>
                         </div>
@@ -67,7 +67,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="roleId" class="form-label">Role *</label>
-                                <InputSelect id="roleId" class="form-select" @bind-Value="model.RoleId" @onchange="OnRoleChanged">
+                                <InputSelect id="roleId" class="form-select" @bind-value="model.RoleId" @onchange="OnRoleChanged">
                                     <option value="">Select a role...</option>
                                     @if (roles != null)
                                     {
@@ -83,7 +83,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="hireDate" class="form-label">Hire Date *</label>
-                                <SfDatePicker id="hireDate" @bind-Value="model.HireDate" CssClass="form-control"></SfDatePicker>
+                                <SfDatePicker id="hireDate" @bind-value="model.HireDate" CssClass="form-control"></SfDatePicker>
                                 <ValidationMessage For="@(() => model.HireDate)" />
                             </div>
                         </div>
@@ -93,21 +93,21 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="salary" class="form-label">Salary *</label>
-                                <InputNumber id="salary" class="form-control" @bind-Value="model.Salary" />
+                                <InputNumber id="salary" class="form-control" @bind-value="model.Salary" />
                                 <ValidationMessage For="@(() => model.Salary)" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="monthlyIncentive" class="form-label">Monthly Incentive</label>
-                                <InputNumber id="monthlyIncentive" class="form-control" @bind-Value="model.MonthlyIncentive" />
+                                <InputNumber id="monthlyIncentive" class="form-control" @bind-value="model.MonthlyIncentive" />
                                 <ValidationMessage For="@(() => model.MonthlyIncentive)" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="commissionPercent" class="form-label">Commission %</label>
-                                <InputNumber id="commissionPercent" class="form-control" @bind-Value="model.CommissionPercent" />
+                                <InputNumber id="commissionPercent" class="form-control" @bind-value="model.CommissionPercent" />
                                 <ValidationMessage For="@(() => model.CommissionPercent)" />
                             </div>
                         </div>
@@ -117,7 +117,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="status" class="form-label">Status</label>
-                                <InputSelect id="status" class="form-select" @bind-Value="model.Status">
+                                <InputSelect id="status" class="form-select" @bind-value="model.Status">
                                     @foreach (var status in Enum.GetValues<EmployeeStatus>())
                                     {
                                         <option value="@status">@status</option>
@@ -128,7 +128,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3 form-check mt-4">
-                                <InputCheckbox id="isActive" class="form-check-input" @bind-Value="model.IsActive" />
+                                <InputCheckbox id="isActive" class="form-check-input" @bind-value="model.IsActive" />
                                 <label for="isActive" class="form-check-label">Is Active</label>
                             </div>
                         </div>

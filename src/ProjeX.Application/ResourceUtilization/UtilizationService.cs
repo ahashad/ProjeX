@@ -21,6 +21,10 @@ namespace ProjeX.Application.ResourceUtilization
         {
             var assignments = await _context.ActualAssignments
                 .Include(a => a.Project)
+                    .ThenInclude(p => p.Client)
+                .Include(a => a.PlannedTeamSlot)
+                    .ThenInclude(pts => pts.Role)
+                .Include(a => a.Employee)
                 .Where(a => a.EmployeeId == employeeId &&
                            a.Status == AssignmentStatus.Active &&
                            a.StartDate <= endDate &&
@@ -29,6 +33,8 @@ namespace ProjeX.Application.ResourceUtilization
 
             var totalAllocation = assignments.Sum(a => a.AllocationPercent);
             var projectCount = assignments.Select(a => a.ProjectId).Distinct().Count();
+
+            var actualAssignments = _mapper.Map<List<ActualAssignmentDto>>(assignments);
 
             return new UtilizationSummaryDto
             {
@@ -39,7 +45,7 @@ namespace ProjeX.Application.ResourceUtilization
                 ProjectCount = projectCount,
                 IsOverAllocated = totalAllocation > 100,
                 IsUnderUtilized = totalAllocation < 80,
-                Assignments = _mapper.Map<List<ActualAssignmentDto>>(assignments)
+                Assignments = actualAssignments
             };
         }
 

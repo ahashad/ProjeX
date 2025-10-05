@@ -1,18 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using ProjeX.Domain.Enums;
 
 namespace ProjeX.Application.ActualAssignment.Commands
 {
-    public class CreateActualAssignmentCommand
+    public class UpdateActualAssignmentCommand
     {
         [Required]
-        public Guid ProjectId { get; set; }
-        
-        [Required]
-        public Guid PlannedTeamSlotId { get; set; }
-        
-        [Required]
-        public Guid EmployeeId { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         public DateTime StartDate { get; set; }
@@ -25,7 +18,7 @@ namespace ProjeX.Application.ActualAssignment.Commands
 
         public string Notes { get; set; } = string.Empty;
 
-        // Salary snapshot fields - optional, will default from Employee if not provided
+        // Salary snapshot fields - optional overrides
         [Range(0, double.MaxValue, ErrorMessage = "Salary must be non-negative")]
         public decimal? SnapshotSalary { get; set; }
 
@@ -45,4 +38,3 @@ namespace ProjeX.Application.ActualAssignment.Commands
         public decimal? SnapshotOthers { get; set; }
     }
 }
-

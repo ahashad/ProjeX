@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjeX.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using ProjeX.Infrastructure.Data;
 namespace ProjeX.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250930020133_AddSalarySnapshotToActualAssignment")]
+    partial class AddSalarySnapshotToActualAssignment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -354,19 +357,10 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<decimal?>("SnapshotCommissionPercent")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("SnapshotHoteling")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("SnapshotMonthlyIncentive")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("SnapshotOthers")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("SnapshotSalary")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("SnapshotTickets")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("StartDate")
@@ -2060,22 +2054,13 @@ namespace ProjeX.Infrastructure.Migrations
                     b.Property<decimal>("PlannedCommissionPercent")
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<decimal>("PlannedHoteling")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal>("PlannedIncentive")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("PlannedMonthlyCost")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("PlannedOthers")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal>("PlannedSalary")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("PlannedTickets")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("PlannedVendorCost")

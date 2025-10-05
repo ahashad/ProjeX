@@ -1,9 +1,10 @@
 using AutoMapper;
-using ProjeX.Application.Employee;
-using ProjeX.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using ProjeX.Domain.Enums;
 using ProjeX.Application.ActualAssignment.Commands;
+using ProjeX.Application.Employee;
+using ProjeX.Domain.Entities;
+using ProjeX.Domain.Enums;
+using ProjeX.Infrastructure.Data;
 
 namespace ProjeX.Application.ActualAssignment
 {
@@ -18,7 +19,7 @@ namespace ProjeX.Application.ActualAssignment
             _mapper = mapper;
         }
 
-        public async Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId)
+        public async System.Threading.Tasks.Task<AssignmentCreationResult> CreateAsync(CreateActualAssignmentCommand command, string userId)
         {
             var result = new AssignmentCreationResult();
 
@@ -86,14 +87,22 @@ namespace ProjeX.Application.ActualAssignment
                 CostDifferencePercentage = preCheckResult.CostVariancePercentage,
                 UtilizationWarning = preCheckResult.HasUtilizationWarning,
                 RoleMismatchWarning = preCheckResult.HasRoleMismatch,
-                RequiresApproval = preCheckResult.RequiresApproval
+                RequiresApproval = preCheckResult.RequiresApproval,
+
+                // Salary snapshot: default from Employee or PlannedTeamSlot if not provided in command
+                SnapshotSalary = command.SnapshotSalary ?? employee.Salary,
+                SnapshotMonthlyIncentive = command.SnapshotMonthlyIncentive ?? employee.MonthlyIncentive,
+                SnapshotCommissionPercent = command.SnapshotCommissionPercent ?? employee.CommissionPercent,
+                SnapshotTickets = command.SnapshotTickets ?? plannedTeamSlot.PlannedTickets,
+                SnapshotHoteling = command.SnapshotHoteling ?? plannedTeamSlot.PlannedHoteling,
+                SnapshotOthers = command.SnapshotOthers ?? plannedTeamSlot.PlannedOthers
             };
 
             // Establish navigation property relationships
             project.ActualAssignments.Add(assignment);
             employee.ActualAssignments.Add(assignment);
-
             _context.ActualAssignments.Add(assignment);
+
             await _context.SaveChangesAsync();
 
             var assignmentDto = await GetByIdAsync(assignment.Id);
@@ -102,7 +111,7 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        public async Task ApproveAsync(Guid assignmentId, string approverUserId)
+        public async System.Threading.Tasks.Task ApproveAsync(Guid assignmentId, string approverUserId)
         {
             var assignment = await _context.ActualAssignments.FindAsync(assignmentId);
             if (assignment == null)
@@ -116,10 +125,16 @@ namespace ProjeX.Application.ActualAssignment
             assignment.ModifiedBy = approverUserId;
             assignment.ModifiedAt = DateTime.UtcNow;
 
+            // Update planned team slot status to Active
+            var plannedTeamSlot = await _context.PlannedTeamSlots.FindAsync(assignment.PlannedTeamSlotId);
+            if (plannedTeamSlot == null)
+                throw new ArgumentException("Planned team slot not found");
+            plannedTeamSlot.Status = PlannedTeamStatus.Active;
+
             await _context.SaveChangesAsync();
         }
 
-        public async Task RejectAsync(Guid assignmentId, string approverUserId, string reason)
+        public async System.Threading.Tasks.Task RejectAsync(Guid assignmentId, string approverUserId, string reason)
         {
             var assignment = await _context.ActualAssignments.FindAsync(assignmentId);
             if (assignment == null)
@@ -137,13 +152,195 @@ namespace ProjeX.Application.ActualAssignment
             await _context.SaveChangesAsync();
         }
 
-        public async Task UnassignAsync(UnassignActualAssignmentCommand command, string userId)
+        public async System.Threading.Tasks.Task DeclineAsync(Guid assignmentId, string approverUserId, string reason)
+        {
+            var assignment = await _context.ActualAssignments.FindAsync(assignmentId);
+            if (assignment == null)
+            {
+                throw new ArgumentException("Assignment not found");
+            }
+
+            // Validate that assignment is in Planned status
+            if (assignment.Status != AssignmentStatus.Planned)
+            {
+                throw new InvalidOperationException($"Cannot decline assignment with status {assignment.Status}. Only Planned assignments can be declined.");
+            }
+
+            // Transition to Cancelled status
+            assignment.Status = AssignmentStatus.Cancelled;
+            assignment.ApprovedByUserId = approverUserId;
+            assignment.ApprovedOn = DateTime.UtcNow;
+            assignment.Notes = $"{assignment.Notes}\n\nDECLINED: {reason}".Trim();
+            assignment.ModifiedBy = approverUserId;
+            assignment.ModifiedAt = DateTime.UtcNow;
+
+            // Note: PlannedSlot status remains independent and unchanged
+            // The slot is now freed up for reassignment since this assignment is cancelled
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task<AssignmentUpdateResult> UpdateAsync(UpdateActualAssignmentCommand command, string userId)
+        {
+            var result = new AssignmentUpdateResult();
+
+            try
+            {
+                var assignment = await _context.ActualAssignments
+                    .Include(a => a.Employee)
+                    .Include(a => a.Project)
+                    .Include(a => a.PlannedTeamSlot)
+                    .FirstOrDefaultAsync(a => a.Id == command.Id && !a.IsDeleted);
+
+                if (assignment == null)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("Assignment not found");
+                    return result;
+                }
+
+                //// Validation: EndDate must not be in the future
+                //if (command.EndDate.HasValue && command.EndDate.Value.Date > DateTime.Today)
+                //{
+                //    result.IsSuccessful = false;
+                //    result.Errors.Add("End date cannot be in the future");
+                //    return result;
+                //}
+
+                // Validation: EndDate must not be before StartDate
+                if (command.EndDate.HasValue && command.EndDate.Value.Date < command.StartDate.Date)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("End date cannot be before start date");
+                    return result;
+                }
+
+                // Validation: StartDate must be within project date range
+                if (command.StartDate < assignment.Project.StartDate)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("Start date cannot be before project start date");
+                    return result;
+                }
+
+                if (command.StartDate > assignment.Project.EndDate)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("Start date must be within project date range");
+                    return result;
+                }
+
+                if (command.EndDate.HasValue && command.EndDate.Value > assignment.Project.EndDate)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("End date cannot be after project end date");
+                    return result;
+                }
+
+                // Validation: Allocation percent
+                if (command.AllocationPercent <= 0 || command.AllocationPercent > 100)
+                {
+                    result.IsSuccessful = false;
+                    result.Errors.Add("Allocation percent must be between 0 and 100");
+                    return result;
+                }
+
+                // Update assignment fields
+                assignment.StartDate = command.StartDate;
+                assignment.EndDate = command.EndDate;
+                assignment.AllocationPercent = command.AllocationPercent;
+                assignment.Notes = command.Notes;
+                assignment.SnapshotSalary = command.SnapshotSalary;
+                assignment.SnapshotMonthlyIncentive = command.SnapshotMonthlyIncentive;
+                assignment.SnapshotCommissionPercent = command.SnapshotCommissionPercent;
+                assignment.SnapshotTickets = command.SnapshotTickets;
+                assignment.SnapshotHoteling = command.SnapshotHoteling;
+                assignment.SnapshotOthers = command.SnapshotOthers;
+                assignment.ModifiedBy = userId;
+                assignment.ModifiedAt = DateTime.UtcNow;
+
+                // Auto-complete if EndDate is set and in the past
+                if (assignment.EndDate.HasValue && assignment.EndDate.Value.Date < DateTime.Today)
+                {
+                    assignment.Status = AssignmentStatus.Completed;
+                    result.Warnings.Add("Assignment has been automatically completed because end date is in the past");
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Reload with full includes for DTO mapping
+                var updatedAssignment = await GetByIdAsync(assignment.Id);
+                result.Assignment = updatedAssignment;
+                result.IsSuccessful = true;
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccessful = false;
+                result.Errors.Add($"Error updating assignment: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        public async System.Threading.Tasks.Task DeleteAsync(Guid assignmentId, string userId)
+        {
+            var assignment = await _context.ActualAssignments
+                .Include(a => a.PlannedTeamSlot)
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && !a.IsDeleted);
+
+            if (assignment == null)
+            {
+                throw new ArgumentException("Assignment not found");
+            }
+
+            // Soft delete
+            assignment.IsDeleted = true;
+            assignment.ModifiedBy = userId;
+            assignment.ModifiedAt = DateTime.UtcNow;
+
+            // Update planned team slot status if no other active/planned assignments
+            if (assignment.PlannedTeamSlotId.HasValue)
+            {
+                var hasOtherAssignments = await _context.ActualAssignments
+                    .AnyAsync(a => a.PlannedTeamSlotId == assignment.PlannedTeamSlotId &&
+                                  a.Id != assignmentId &&
+                                  !a.IsDeleted &&
+                                  (a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Planned));
+
+                if (!hasOtherAssignments && assignment.PlannedTeamSlot != null)
+                {
+                    assignment.PlannedTeamSlot.Status = PlannedTeamStatus.Planned;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task UnassignAsync(UnassignActualAssignmentCommand command, string userId)
         {
             var assignment = await _context.ActualAssignments.FindAsync(command.AssignmentId);
             if (assignment == null)
             {
                 throw new ArgumentException("Assignment not found");
             }
+
+            // Validation: EndDate must not be in the future
+            if (command.EndDate.Date > DateTime.Today)
+            {
+                throw new ArgumentException("End date cannot be in the future");
+            }
+
+            // Validation: EndDate must not be before StartDate
+            if (command.EndDate.Date < assignment.StartDate.Date)
+            {
+                throw new ArgumentException("End date cannot be before start date");
+            }
+
+            // Update planned team slot status to Planned
+            var plannedTeamSlot = await _context.PlannedTeamSlots.FindAsync(assignment.PlannedTeamSlotId);
+            if (plannedTeamSlot == null)
+                throw new ArgumentException("Planned team slot not found");
+            plannedTeamSlot.Status = PlannedTeamStatus.Planned;
 
             assignment.EndDate = command.EndDate;
             assignment.Status = AssignmentStatus.Completed;
@@ -153,7 +350,7 @@ namespace ProjeX.Application.ActualAssignment
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<ActualAssignmentDto>> GetAssignmentsAsync(Guid? projectId, Guid? employeeId)
+        public async System.Threading.Tasks.Task<List<ActualAssignmentDto>> GetAssignmentsAsync(Guid? projectId, Guid? employeeId)
         {
             var query = _context.ActualAssignments
                 .Include(a => a.Project)
@@ -181,7 +378,7 @@ namespace ProjeX.Application.ActualAssignment
             return _mapper.Map<List<ActualAssignmentDto>>(assignments);
         }
 
-        public async Task<ActualAssignmentDto?> GetByIdAsync(Guid id)
+        public async System.Threading.Tasks.Task<ActualAssignmentDto?> GetByIdAsync(Guid id)
         {
             var assignment = await _context.ActualAssignments
                 .Include(a => a.Project)
@@ -195,7 +392,7 @@ namespace ProjeX.Application.ActualAssignment
             return assignment != null ? _mapper.Map<ActualAssignmentDto>(assignment) : null;
         }
 
-        public async Task<decimal> GetEmployeeAllocationAsync(Guid employeeId, DateTime startDate, DateTime endDate)
+        public async System.Threading.Tasks.Task<decimal> GetEmployeeAllocationAsync(Guid employeeId, DateTime startDate, DateTime endDate)
         {
             return await _context.ActualAssignments
                 .Where(aa => aa.EmployeeId == employeeId &&
@@ -206,7 +403,7 @@ namespace ProjeX.Application.ActualAssignment
                 .SumAsync(aa => aa.AllocationPercent);
         }
 
-        public async Task<List<EmployeeUtilizationPointDto>> GetEmployeeUtilizationAsync(Guid employeeId, DateTime from, DateTime to)
+        public async System.Threading.Tasks.Task<List<EmployeeUtilizationPointDto>> GetEmployeeUtilizationAsync(Guid employeeId, DateTime from, DateTime to)
         {
             var assignments = await _context.ActualAssignments
                 .Where(a => a.EmployeeId == employeeId &&
@@ -234,7 +431,7 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        public async Task<AssignmentCreationResult> ValidateAssignmentAsync(CreateActualAssignmentCommand command)
+        public async System.Threading.Tasks.Task<AssignmentCreationResult> ValidateAssignmentAsync(CreateActualAssignmentCommand command)
         {
             var result = new AssignmentCreationResult();
 
@@ -286,7 +483,7 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        private async Task<AssignmentPreCheckResult> PerformPreAssignmentChecksAsync(
+        private async System.Threading.Tasks.Task<AssignmentPreCheckResult> PerformPreAssignmentChecksAsync(
             CreateActualAssignmentCommand command,
             Domain.Entities.Project project,
             Domain.Entities.Employee employee,
@@ -321,26 +518,25 @@ namespace ProjeX.Application.ActualAssignment
                 result.Blockers.Add("Assignment start date must be before or equal to end date");
             }
 
-            // Validation 2: Slot allocation doesn't exceed AllowedAllocation%
-            var existingSlotAllocations = await _context.ActualAssignments
-                .Where(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&
-                            !aa.IsDeleted &&
-                            (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned))
-                .SumAsync(aa => aa.AllocationPercent);
 
-            var totalSlotAllocation = existingSlotAllocations + command.AllocationPercent;
-            if (totalSlotAllocation > plannedTeamSlot.AllocationPercent)
-            {
-                result.Blockers.Add($"Assignment allocation ({command.AllocationPercent}%) exceeds planned slot allocation ({plannedTeamSlot.AllocationPercent}%)");
-            }
+            ////comment this code block to Allow to allocate more than 100% to planned slot.
+            //// Validation 2: Slot allocation doesn't exceed AllowedAllocation%
+            //var existingSlotAllocations = await _context.ActualAssignments
+            //    .Where(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&
+            //                !aa.IsDeleted &&
+            //                (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned))
+            //    .SumAsync(aa => aa.AllocationPercent);
+
+            //var totalSlotAllocation = existingSlotAllocations + command.AllocationPercent;
+            //if (totalSlotAllocation > plannedTeamSlot.AllocationPercent)
+            //{
+            //    result.Blockers.Add($"Assignment allocation ({command.AllocationPercent}%) exceeds planned slot allocation ({plannedTeamSlot.AllocationPercent}%)");
+            //}
+            ////comment this code block to Allow to allocate more than 100% to planned slot.
+
 
             // Validation 3: Timeline-based employee allocation validation
-            var endDate = command.EndDate ?? project.EndDate;
-            var timelineValidation = await ValidateEmployeeTimelineAllocationAsync(
-                command.EmployeeId,
-                command.StartDate,
-                endDate,
-                command.AllocationPercent);
+            var timelineValidation = await ValidateEmployeeTimelineAllocationAsync(command);
 
             if (timelineValidation.HasViolations)
             {
@@ -360,7 +556,7 @@ namespace ProjeX.Application.ActualAssignment
                 .Where(aa => aa.EmployeeId == command.EmployeeId &&
                             !aa.IsDeleted &&
                             (aa.Status != AssignmentStatus.Cancelled) &&
-                            aa.StartDate <= endDate &&
+                            aa.StartDate <= command.EndDate &&
                             (aa.EndDate == null || aa.EndDate >= command.StartDate))
                 .CountAsync();
 
@@ -394,32 +590,27 @@ namespace ProjeX.Application.ActualAssignment
             }
 
             // Determine if approval is required
-            result.RequiresApproval = result is { HasRoleMismatch: true, HasCostVariance: true } ;
+            result.RequiresApproval = result is { HasRoleMismatch: true, HasCostVariance: true };
 
             return result;
         }
 
         /// <summary>
-        /// Validates employee allocation across timeline to ensure no point in time exceeds 100%
+        /// ValidaCreateActualAssignmentCommandtes Planned slot allocation across timeline to ensure no point in time exceeds 100%
         /// </summary>
-        private async Task<TimelineValidationResult> ValidateEmployeeTimelineAllocationAsync(
-            Guid employeeId,
-            DateTime newAssignmentStart,
-            DateTime? newAssignmentEnd,
-            decimal newAllocationPercent,
-            Guid? excludeAssignmentId = null)
+        private async System.Threading.Tasks.Task<TimelineValidationResult> ValidateEmployeeTimelineAllocationAsync(
+            CreateActualAssignmentCommand command)
         {
             var result = new TimelineValidationResult();
 
             // Get all existing assignments for this employee that overlap with the new assignment
             var existingAssignments = await _context.ActualAssignments
-                .Where(aa => 
-                    //aa.EmployeeId == employeeId &&
+                .Where(aa =>
+                    aa.EmployeeId == command.EmployeeId &&
                     !aa.IsDeleted &&
                     aa.Status != AssignmentStatus.Cancelled &&
-                    (excludeAssignmentId == null || aa.Id != excludeAssignmentId) &&
-                    (newAssignmentEnd == null || aa.StartDate <= newAssignmentEnd) &&
-                    (aa.EndDate == null || aa.EndDate >= newAssignmentStart))
+                    aa.EndDate >= command.StartDate &&
+                    aa.StartDate <= command.EndDate)
                 .Select(aa => new TimelineAssignment
                 {
                     Id = aa.Id,
@@ -434,9 +625,9 @@ namespace ProjeX.Application.ActualAssignment
             existingAssignments.Add(new TimelineAssignment
             {
                 Id = Guid.Empty,
-                StartDate = newAssignmentStart,
-                EndDate = newAssignmentEnd,
-                AllocationPercent = newAllocationPercent,
+                StartDate = command.StartDate,
+                EndDate = command.EndDate,
+                AllocationPercent = command.AllocationPercent,
                 ProjectName = "New Assignment"
             });
 
@@ -493,7 +684,7 @@ namespace ProjeX.Application.ActualAssignment
                     var violationEndDate = timelineEvent.Date.AddDays(-1);
                     // Before this event
                     var maxAllocationBeforeEvent = currentAllocation + timelineEvent.AllocationChange;
-                    
+
                     violations.Add(new AllocationViolation
                     {
                         StartDate = violationStart.Value,
@@ -517,7 +708,7 @@ namespace ProjeX.Application.ActualAssignment
                 violations.Add(new AllocationViolation
                 {
                     StartDate = violationStart.Value,
-                    EndDate = newAssignmentEnd ?? DateTime.MaxValue.Date,
+                    EndDate = command.EndDate ?? DateTime.MaxValue.Date,
                     MaxAllocation = currentAllocation
                 });
             }
@@ -528,7 +719,7 @@ namespace ProjeX.Application.ActualAssignment
             return result;
         }
 
-        public async Task<List<ActualAssignmentDto>> GetAssignmentsBySlotAsync(Guid plannedTeamSlotId, Guid roleId)
+        public async System.Threading.Tasks.Task<List<ActualAssignmentDto>> GetAssignmentsBySlotAsync(Guid plannedTeamSlotId, Guid roleId)
         {
             var assignments = await _context.ActualAssignments
                 .AsNoTracking()
@@ -543,7 +734,7 @@ namespace ProjeX.Application.ActualAssignment
                 .Where(a => a.PlannedTeamSlotId == plannedTeamSlotId &&
                            //a.Employee.RoleId == roleId &&
                            !a.IsDeleted &&
-                           (a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Completed))
+                           a.Status != AssignmentStatus.Cancelled)
                 .OrderBy(a => a.StartDate)
                 .ToListAsync();
 
@@ -565,25 +756,40 @@ namespace ProjeX.Application.ActualAssignment
                     ? (assignment.AllocationPercent * dto.DurationDays) / (decimal)totalDaysInProject
                     : 0;
 
-                // Get employee cost information
-                dto.EmployeeSalary = (assignment.Employee?.Salary ?? 0);
-                dto.EmployeeMonthlyIncentive = (assignment.Employee?.MonthlyIncentive ?? 0);
-                dto.EmployeeCommissionPercent = (assignment.Employee?.CommissionPercent ?? 0);
+                // Get cost information - prioritize snapshot, fallback to employee
+                var salary = assignment.SnapshotSalary ?? assignment.Employee?.Salary ?? 0;
+                var monthlyIncentive = assignment.SnapshotMonthlyIncentive ?? assignment.Employee?.MonthlyIncentive ?? 0;
+                var commissionPercent = assignment.SnapshotCommissionPercent ?? assignment.Employee?.CommissionPercent ?? 0;
+                var tickets = assignment.SnapshotTickets ?? 0;
+                var hoteling = assignment.SnapshotHoteling ?? 0;
+                var others = assignment.SnapshotOthers ?? 0;
 
-                // Calculate actual cost (monthly salary + incentive + commission share)
+                dto.EmployeeSalary = salary;
+                dto.EmployeeMonthlyIncentive = monthlyIncentive;
+                dto.EmployeeCommissionPercent = commissionPercent;
+
+                // Store snapshot values in DTO
+                dto.SnapshotSalary = assignment.SnapshotSalary;
+                dto.SnapshotMonthlyIncentive = assignment.SnapshotMonthlyIncentive;
+                dto.SnapshotCommissionPercent = assignment.SnapshotCommissionPercent;
+                dto.SnapshotTickets = assignment.SnapshotTickets;
+                dto.SnapshotHoteling = assignment.SnapshotHoteling;
+                dto.SnapshotOthers = assignment.SnapshotOthers;
+
+                // NetProjectPrice = ProjectPrice after deducting 15% VAT
+                var netProjectPrice = assignment.Project.ProjectPrice * 0.85m;
+
+                // Calculate actual cost using snapshot values
                 var monthsWorked = dto.DurationDays / 30.0m;
-                var commissionAmount = ((assignment.Employee?.CommissionPercent ?? 0) / 100m) * assignment.Project.ProjectPrice;
-                dto.ActualCost = ((assignment.Employee?.Salary ?? 0) + (assignment.Employee?.MonthlyIncentive ?? 0) + commissionAmount) * monthsWorked;
+                var commissionAmount = (commissionPercent / 100m) * netProjectPrice; // One-time commission
+                dto.ActualCost = ((salary + monthlyIncentive + tickets + hoteling + others) * monthsWorked) + commissionAmount;
 
-                // Calculate planned cost share
-                var plannedCommissionAmount = ((assignment.PlannedTeamSlot?.PlannedCommissionPercent??0) / 100m) * assignment.Project.ProjectPrice;
-                var plannedMonthsCost = (assignment.PlannedTeamSlot?.PeriodMonths ?? 0);
-                dto.PlannedCostShare = ((assignment.PlannedTeamSlot?.PlannedSalary ?? 0) +
-                                       (assignment.PlannedTeamSlot?.PlannedIncentive ?? 0) +
-                                       plannedCommissionAmount) * plannedMonthsCost
-                                                                * (dto.UtilizationPercent/100m);
+                // Calculate planned cost share using snapshot values (Option C)
+                // This represents the planned cost for THIS assignment based on snapshot values at creation time
+                dto.PlannedCostShare = ((salary + monthlyIncentive + tickets + hoteling + others) * monthsWorked) + commissionAmount;
 
                 // Calculate cost variance (positive = over budget, negative = under budget)
+                // Note: With Option C (using snapshot values for both), variance should be 0 unless snapshot values differ
                 dto.CostVariance = dto.ActualCost - dto.PlannedCostShare;
 
                 // Set timeline boundaries
@@ -594,6 +800,429 @@ namespace ProjeX.Application.ActualAssignment
             }
 
             return dtos;
+        }
+
+        public async System.Threading.Tasks.Task<AutoCompleteResult> AutoCompleteAssignmentsAsync(string userId)
+        {
+            var startTime = DateTime.UtcNow;
+            var result = new AutoCompleteResult();
+
+            try
+            {
+                var today = DateTime.Today;
+
+                // Find all Active assignments where EndDate < today (past due)
+                var dueAssignments = await _context.ActualAssignments
+                    .Where(a => !a.IsDeleted &&
+                                a.Status == AssignmentStatus.Active &&
+                                a.EndDate.HasValue &&
+                                a.EndDate.Value < today)
+                    .ToListAsync();
+
+                foreach (var assignment in dueAssignments)
+                {
+                    // Update status to Completed
+                    assignment.Status = AssignmentStatus.Completed;
+                    assignment.ModifiedBy = userId;
+                    assignment.ModifiedAt = DateTime.UtcNow;
+
+                    // Add to completed list for telemetry
+                    result.CompletedAssignmentIds.Add(assignment.Id);
+                }
+
+                // Save changes atomically
+                if (dueAssignments.Any())
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                result.CompletedCount = dueAssignments.Count;
+                result.IsSuccessful = true;
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccessful = false;
+                result.Errors.Add($"Error auto-completing assignments: {ex.Message}");
+            }
+            finally
+            {
+                result.Duration = DateTime.UtcNow - startTime;
+            }
+
+            return result;
+        }
+
+        public async System.Threading.Tasks.Task<DateTime?> GetMostRecentCompletedAssignmentEndDateAsync(Guid projectId,
+            Guid plannedTeamSlotId)
+        {
+            // Get the most recent completed assignment's end date for any employee in this project
+            var mostRecentEndDate = await _context.ActualAssignments
+                .AsNoTracking()
+                .Where(a => a.ProjectId == projectId &&
+                            a.PlannedTeamSlotId == plannedTeamSlotId &&
+                           !a.IsDeleted &&
+                           a.Status == AssignmentStatus.Completed &&
+                           a.EndDate.HasValue)
+                .OrderByDescending(a => a.EndDate)
+                .Select(a => a.EndDate)
+                .FirstOrDefaultAsync();
+
+            return mostRecentEndDate;
+        }
+
+        public async System.Threading.Tasks.Task<AssignmentValidationResult> ValidateAssignmentRealtimeAsync(
+            CreateActualAssignmentCommand command)
+        {
+            var result = new AssignmentValidationResult
+            {
+                IsValid = true,
+                Severity = ValidationSeverity.None
+            };
+
+            // Basic validation
+            if (command.EmployeeId == Guid.Empty)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Employee must be selected");
+                return result;
+            }
+
+            if (command.AllocationPercent <= 0 || command.AllocationPercent > 100)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Allocation percent must be between 0 and 100");
+                return result;
+            }
+
+            if (command.EndDate.HasValue && command.StartDate > command.EndDate.Value)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Start date must be before or equal to end date");
+                return result;
+            }
+
+            // Validate entities exist
+            var project = await _context.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == command.ProjectId);
+            if (project == null)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Project not found");
+                return result;
+            }
+
+            var employee = await _context.Employees
+                .AsNoTracking()
+                .Include(e => e.Role)
+                .FirstOrDefaultAsync(e => e.Id == command.EmployeeId);
+            if (employee == null)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Employee not found");
+                return result;
+            }
+
+            var plannedSlot = await _context.PlannedTeamSlots
+                .AsNoTracking()
+                .Include(pts => pts.Role)
+                .FirstOrDefaultAsync(pts => pts.Id == command.PlannedTeamSlotId);
+            if (plannedSlot == null)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add("Planned team slot not found");
+                return result;
+            }
+
+            // Validate dates within project range
+            if (command.StartDate < project.StartDate)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add($"Start date cannot be before project start date ({project.StartDate:yyyy-MM-dd})");
+            }
+
+            if (command.StartDate > project.EndDate)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add($"Start date must be within project date range (ends {project.EndDate:yyyy-MM-dd})");
+            }
+
+            if (command.EndDate.HasValue && command.EndDate.Value > project.EndDate)
+            {
+                result.IsValid = false;
+                result.Severity = ValidationSeverity.Error;
+                result.BlockingErrors.Add($"End date cannot be after project end date ({project.EndDate:yyyy-MM-dd})");
+            }
+
+            // If basic validations failed, return early
+            if (!result.IsValid)
+            {
+                return result;
+            }
+
+            // Get conflicting assignments with full details
+            var effectiveEndDate = command.EndDate ?? project.EndDate ?? command.StartDate.AddYears(1);
+            var conflictingAssignments = await _context.ActualAssignments
+                .AsNoTracking()
+                .Include(a => a.Project)
+                .Include(a => a.PlannedTeamSlot)
+                    .ThenInclude(pts => pts.Role)
+                .Where(a => a.EmployeeId == command.EmployeeId &&
+                           !a.IsDeleted &&
+                           a.Status != AssignmentStatus.Cancelled &&
+                           a.StartDate <= effectiveEndDate &&
+                           (a.EndDate == null || a.EndDate >= command.StartDate))
+                .Select(a => new ConflictingAssignmentDetail
+                {
+                    AssignmentId = a.Id,
+                    ProjectName = a.Project.ProjectName,
+                    RoleName = a.PlannedTeamSlot != null ? a.PlannedTeamSlot.Role.RoleName : "Unknown",
+                    StartDate = a.StartDate,
+                    EndDate = a.EndDate,
+                    AllocationPercent = a.AllocationPercent,
+                    Status = a.Status.ToString(),
+                    EmployeeName = employee.FullName
+                })
+                .ToListAsync();
+
+            result.ConflictingAssignments = conflictingAssignments;
+            result.HasConflicts = conflictingAssignments.Any();
+
+            // Calculate daily allocations and check for violations
+            var dailyAllocations = CalculateDailyAllocations(
+                command.StartDate,
+                effectiveEndDate,
+                command.AllocationPercent,
+                conflictingAssignments);
+
+            result.DailyAllocations = dailyAllocations;
+
+            if (dailyAllocations.Any())
+            {
+                var maxOverallocation = dailyAllocations.Max(d => d.TotalAllocationPercent);
+                result.MaxAllocationFoundPercent = maxOverallocation;
+                result.MaxAllocationDate = dailyAllocations
+                    .FirstOrDefault(d => d.TotalAllocationPercent == maxOverallocation)?.Date;
+
+                var minRemaining = dailyAllocations.Min(d => d.RemainingPercent);
+                result.RemainingCapacityPercent = minRemaining;
+
+                // Check for allocation violations
+                var overallocatedDays = dailyAllocations.Where(d => d.IsOverallocated).ToList();
+                if (overallocatedDays.Any())
+                {
+                    result.IsValid = false;
+                    result.Severity = ValidationSeverity.Error;
+                    var firstViolation = overallocatedDays.First();
+                    var lastViolation = overallocatedDays.Last();
+                    result.BlockingErrors.Add(
+                        $"Employee allocation exceeds 100% from {firstViolation.Date:yyyy-MM-dd} to {lastViolation.Date:yyyy-MM-dd} (peak: {maxOverallocation:F1}%)");
+
+                    // Calculate suggested windows
+                    result.SuggestedWindows = CalculateSuggestedWindows(
+                        command.StartDate,
+                        effectiveEndDate,
+                        command.AllocationPercent,
+                        conflictingAssignments,
+                        project.StartDate ?? command.StartDate,
+                        project.EndDate ?? effectiveEndDate);
+                }
+                else if (maxOverallocation > 80)
+                {
+                    result.Severity = ValidationSeverity.Warning;
+                    result.Warnings.Add($"High utilization: Employee will reach {maxOverallocation:F1}% allocation on {result.MaxAllocationDate:yyyy-MM-dd}");
+                }
+            }
+
+            // Role mismatch check
+            if (employee.RoleId != plannedSlot.RoleId)
+            {
+                if (result.Severity < ValidationSeverity.Warning)
+                    result.Severity = ValidationSeverity.Warning;
+                result.Warnings.Add($"Role mismatch: Employee is {employee.Role?.RoleName ?? "Unknown"} but slot requires {plannedSlot.Role?.RoleName ?? "Unknown"}");
+            }
+
+            ////comment this code block to Allow to allocate more than 100% to planned slot.
+            //// Slot allocation check
+            //var existingSlotAllocations = await _context.ActualAssignments
+            //    .Where(aa => aa.PlannedTeamSlotId == command.PlannedTeamSlotId &&
+            //                !aa.IsDeleted &&
+            //                (aa.Status == AssignmentStatus.Active || aa.Status == AssignmentStatus.Planned)
+            //                && aa.EndDate <= effectiveEndDate && aa.StartDate >= command.StartDate)
+            //    .SumAsync(aa => aa.AllocationPercent);
+
+            //var totalSlotAllocation = existingSlotAllocations + command.AllocationPercent;
+            //if (totalSlotAllocation > plannedSlot.AllocationPercent)
+            //{
+            //    result.IsValid = false;
+            //    result.Severity = ValidationSeverity.Error;
+            //    result.BlockingErrors.Add(
+            //        $"Assignment allocation ({command.AllocationPercent:F1}%) exceeds planned slot remaining capacity ({plannedSlot.AllocationPercent - existingSlotAllocations:F1}%)");
+            //}
+            ////comment this code block to Allow to allocate more than 100% to planned slot.
+
+            // Overlapping assignments count
+            if (conflictingAssignments.Any())
+            {
+                if (result.Severity < ValidationSeverity.Info)
+                    result.Severity = ValidationSeverity.Info;
+                result.Messages.Add($"Employee has {conflictingAssignments.Count} overlapping assignment(s) during this period");
+            }
+
+            return result;
+        }
+
+        private List<DailyAllocation> CalculateDailyAllocations(
+            DateTime startDate,
+            DateTime endDate,
+            decimal newAllocationPercent,
+            List<ConflictingAssignmentDetail> existingAssignments)
+        {
+            var dailyAllocations = new List<DailyAllocation>();
+
+            for (var day = startDate.Date; day <= endDate.Date; day = day.AddDays(1))
+            {
+                var existingAllocation = existingAssignments
+                    .Where(a => a.StartDate.Date <= day && (a.EndDate == null || a.EndDate.Value.Date >= day))
+                    .Sum(a => a.AllocationPercent);
+
+                var totalAllocation = existingAllocation + newAllocationPercent;
+
+                dailyAllocations.Add(new DailyAllocation
+                {
+                    Date = day,
+                    TotalAllocationPercent = totalAllocation,
+                    RemainingPercent = 100 - totalAllocation
+                });
+            }
+
+            return dailyAllocations;
+        }
+
+        private List<SuggestedWindow> CalculateSuggestedWindows(
+            DateTime requestedStart,
+            DateTime requestedEnd,
+            decimal requestedAllocation,
+            List<ConflictingAssignmentDetail> existingAssignments,
+            DateTime projectStart,
+            DateTime projectEnd)
+        {
+            var suggestions = new List<SuggestedWindow>();
+            var requestedDuration = (requestedEnd - requestedStart).Days + 1;
+
+            // Find all available windows in the project timeline
+            var availableWindows = new List<(DateTime Start, DateTime End, decimal AvailableAllocation)>();
+
+            for (var day = projectStart.Date; day <= projectEnd.Date; day = day.AddDays(1))
+            {
+                var existingAllocation = existingAssignments
+                    .Where(a => a.StartDate.Date <= day && (a.EndDate == null || a.EndDate.Value.Date >= day))
+                    .Sum(a => a.AllocationPercent);
+
+                var available = 100 - existingAllocation;
+
+                if (available >= requestedAllocation)
+                {
+                    // Start of a potential window
+                    var windowStart = day;
+                    var windowEnd = day;
+
+                    // Extend window as far as possible
+                    for (var nextDay = day.AddDays(1); nextDay <= projectEnd.Date; nextDay = nextDay.AddDays(1))
+                    {
+                        var nextDayExisting = existingAssignments
+                            .Where(a => a.StartDate.Date <= nextDay && (a.EndDate == null || a.EndDate.Value.Date >= nextDay))
+                            .Sum(a => a.AllocationPercent);
+
+                        var nextDayAvailable = 100 - nextDayExisting;
+
+                        if (nextDayAvailable >= requestedAllocation)
+                        {
+                            windowEnd = nextDay;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    availableWindows.Add((windowStart, windowEnd, available));
+                    day = windowEnd; // Skip to end of this window
+                }
+            }
+
+            // Prioritize windows
+            // 1. Best fit (closest to requested dates)
+            var bestFit = availableWindows
+                .Where(w => (w.End - w.Start).Days + 1 >= requestedDuration)
+                .OrderBy(w => Math.Abs((w.Start - requestedStart).Days))
+                .FirstOrDefault();
+
+            if (bestFit != default)
+            {
+                var adjustedEnd = bestFit.Start.AddDays(requestedDuration - 1);
+                if (adjustedEnd > bestFit.End)
+                    adjustedEnd = bestFit.End;
+
+                suggestions.Add(new SuggestedWindow
+                {
+                    StartDate = bestFit.Start,
+                    EndDate = adjustedEnd,
+                    MaxAllocationAvailable = bestFit.AvailableAllocation,
+                    DurationDays = (adjustedEnd - bestFit.Start).Days + 1,
+                    Reason = "Closest to requested dates",
+                    Priority = SuggestionPriority.BestFit
+                });
+            }
+
+            // 2. Earliest available
+            var earliest = availableWindows
+                .Where(w => (w.End - w.Start).Days + 1 >= requestedDuration)
+                .OrderBy(w => w.Start)
+                .FirstOrDefault();
+
+            if (earliest != default && earliest.Start != bestFit.Start)
+            {
+                var adjustedEnd = earliest.Start.AddDays(requestedDuration - 1);
+                if (adjustedEnd > earliest.End)
+                    adjustedEnd = earliest.End;
+
+                suggestions.Add(new SuggestedWindow
+                {
+                    StartDate = earliest.Start,
+                    EndDate = adjustedEnd,
+                    MaxAllocationAvailable = earliest.AvailableAllocation,
+                    DurationDays = (adjustedEnd - earliest.Start).Days + 1,
+                    Reason = "Earliest available window",
+                    Priority = SuggestionPriority.Earliest
+                });
+            }
+
+            // 3. Longest duration
+            var longest = availableWindows
+                .OrderByDescending(w => (w.End - w.Start).Days)
+                .FirstOrDefault();
+
+            if (longest != default && longest.Start != bestFit.Start && longest.Start != earliest.Start)
+            {
+                suggestions.Add(new SuggestedWindow
+                {
+                    StartDate = longest.Start,
+                    EndDate = longest.End,
+                    MaxAllocationAvailable = longest.AvailableAllocation,
+                    DurationDays = (longest.End - longest.Start).Days + 1,
+                    Reason = "Longest available window",
+                    Priority = SuggestionPriority.Longest
+                });
+            }
+
+            return suggestions.OrderBy(s => s.Priority).Take(3).ToList();
         }
     }
 

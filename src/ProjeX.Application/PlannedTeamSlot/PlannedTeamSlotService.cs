@@ -380,11 +380,11 @@ namespace ProjeX.Application.PlannedTeamSlot
                 .Where(s => s.ProjectId == projectId && !s.IsDeleted)
                 .ToListAsync();
 
-            // Get all assignments for this project (Active, Planned, and Completed for counts and costs)
+            // Get all assignments for this project
             var assignments = await _context.ActualAssignments
                 .AsNoTracking()
                 .Include(aa => aa.Employee)
-                .Where(aa => aa.ProjectId == projectId && !aa.IsDeleted)
+                .Where(aa => aa.ProjectId == projectId && !aa.IsDeleted && aa.Status != AssignmentStatus.Cancelled)
                 .ToListAsync();
 
             // Calculate project total days for utilization
@@ -399,17 +399,32 @@ namespace ProjeX.Application.PlannedTeamSlot
                 PlannedSlotsCount = slots.Count
             };
 
-            // Calculate cost KPIs per slot
-            var slotActualCosts = new Dictionary<Guid, decimal>();
-            var slotUtilizations = new Dictionary<Guid, decimal>();
+            // NetProjectPrice for commission calculations
+            var netProjectPrice = project.ProjectPrice / 1.15m;
 
-            foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Completed))
+            // ============================================
+            // KPI 1: Total Planned Cost (from Planned Slots)
+            // ============================================
+            foreach (var slot in slots)
             {
-                if (!assignment.PlannedTeamSlotId.HasValue)
-                    continue;
+                // Calculate planned cost for this slot using canonical formula
+                var plannedCommissionAmount = (slot.PlannedCommissionPercent / 100m) * netProjectPrice;
+                var plannedCostPerMonth = slot.PlannedSalary + slot.PlannedIncentive +
+                                         slot.PlannedTickets + slot.PlannedHoteling + slot.PlannedOthers;
+                var slotPlannedCost = (plannedCostPerMonth * slot.PeriodMonths) + plannedCommissionAmount;
 
-                var slotId = assignment.PlannedTeamSlotId.Value;
+                kpi.TotalPlannedCost += slotPlannedCost;
+                kpi.PlannedAllocationPercent += slot.AllocationPercent;
+            }
 
+            // ============================================
+            // KPI 2: Total Actual Cost (from Actual Assignments)
+            // KPI 4: Utilization % calculation components
+            // ============================================
+            decimal totalAssignmentUtilization = 0m;
+
+            foreach (var assignment in assignments)
+            {
                 // Use snapshot values if available, otherwise fall back to employee values
                 var salary = assignment.SnapshotSalary ?? assignment.Employee?.Salary ?? 0;
                 var monthlyIncentive = assignment.SnapshotMonthlyIncentive ?? assignment.Employee?.MonthlyIncentive ?? 0;
@@ -423,58 +438,38 @@ namespace ProjeX.Application.PlannedTeamSlot
                 var durationDays = (endDate - assignment.StartDate).Days;
                 var monthsWorked = durationDays / 30.0m;
 
-                // Calculate commission amount
-                var commissionAmount = (commissionPercent / 100m) * project.ProjectPrice;
+                // Calculate commission amount (one-time, using NetProjectPrice)
+                var commissionAmount = (commissionPercent / 100m) * netProjectPrice;
 
-                // Calculate total actual cost for this assignment
-                var assignmentActualCost = (salary + monthlyIncentive + commissionAmount + tickets + hoteling + others) * monthsWorked;
+                // Calculate actual cost for this assignment and add directly to total
+                var assignmentActualCost = ((salary + monthlyIncentive + tickets + hoteling + others) * monthsWorked) + commissionAmount;
+                kpi.TotalActualCost += assignmentActualCost;
 
-                // Aggregate costs to slot level
-                if (slotActualCosts.ContainsKey(slotId))
-                    slotActualCosts[slotId] += assignmentActualCost;
-                else
-                    slotActualCosts[slotId] = assignmentActualCost;
-
-                // Calculate utilization percentage
+                // Calculate utilization percentage for this assignment
                 var utilizationPercent = totalDaysInProject > 0
                     ? (assignment.AllocationPercent * durationDays) / (decimal)totalDaysInProject
                     : 0m;
-
-                if (slotUtilizations.ContainsKey(slotId))
-                    slotUtilizations[slotId] += utilizationPercent;
-                else
-                    slotUtilizations[slotId] = utilizationPercent;
+                totalAssignmentUtilization += utilizationPercent;
             }
 
-            // Aggregate slot-level data to project-level KPIs
-            // NetProjectPrice for commission calculations
-            var netProjectPrice = project.ProjectPrice * 0.85m;
-
-            foreach (var slot in slots)
-            {
-                // Calculate planned cost for this slot using canonical formula
-                var plannedCommissionAmount = (slot.PlannedCommissionPercent / 100m) * netProjectPrice;
-                var plannedCostPerMonth = slot.PlannedSalary + slot.PlannedIncentive +
-                                         slot.PlannedTickets + slot.PlannedHoteling + slot.PlannedOthers;
-                var slotPlannedCost = (plannedCostPerMonth * slot.PeriodMonths) + plannedCommissionAmount;
-
-                kpi.TotalPlannedCost += slotPlannedCost;
-                kpi.PlannedAllocationPercent += slot.AllocationPercent;
-
-                // Add actual cost if exists
-                if (slotActualCosts.TryGetValue(slot.Id, out var actualCost))
-                {
-                    kpi.TotalActualCost += actualCost;
-                }
-            }
-
-            // Calculate variance
+            // ============================================
+            // KPI 3: Total Variance (Actual - Planned)
+            // ============================================
             kpi.TotalVariance = kpi.TotalActualCost - kpi.TotalPlannedCost;
             kpi.VariancePercentOfPlanned = kpi.TotalPlannedCost > 0
                 ? (kpi.TotalVariance / kpi.TotalPlannedCost) * 100
                 : 0;
 
-            // Calculate allocation metrics
+            // ============================================
+            // KPI 4: Utilization % = Σ(Assignment Utilization%) / Σ(Slot Allocation%)
+            // ============================================
+            kpi.AverageUtilizationPercent = kpi.PlannedAllocationPercent > 0
+                ? (totalAssignmentUtilization / kpi.PlannedAllocationPercent) * 100
+                : 0;
+
+            // ============================================
+            // Additional KPIs (for reference, not displayed in main 4)
+            // ============================================
             var activeAndPlannedAllocations = assignments
                 .Where(a => a.Status == AssignmentStatus.Active || a.Status == AssignmentStatus.Planned)
                 .Sum(a => a.AllocationPercent);
@@ -485,12 +480,6 @@ namespace ProjeX.Application.PlannedTeamSlot
             // Count assignments by status
             kpi.ActiveAssignmentsCount = assignments.Count(a => a.Status == AssignmentStatus.Active);
             kpi.CompletedAssignmentsCount = assignments.Count(a => a.Status == AssignmentStatus.Completed);
-
-            // Calculate average utilization
-            if (slotUtilizations.Any())
-            {
-                kpi.AverageUtilizationPercent = slotUtilizations.Values.Average();
-            }
 
             var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
             _logger.LogInformation("TeamPlanning.KPI.Loaded - ProjectId: {ProjectId}, SlotsCount: {SlotsCount}, Duration: {Duration}ms",

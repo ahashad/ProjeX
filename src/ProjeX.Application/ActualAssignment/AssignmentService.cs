@@ -721,22 +721,32 @@ namespace ProjeX.Application.ActualAssignment
 
         public async System.Threading.Tasks.Task<List<ActualAssignmentDto>> GetAssignmentsBySlotAsync(Guid plannedTeamSlotId, Guid roleId)
         {
-            var assignments = await _context.ActualAssignments
+            var slot = await _context.PlannedTeamSlots
                 .AsNoTracking()
-                .Include(a => a.PlannedTeamSlot)
-                    .ThenInclude(pts => pts.Project)
-                .Include(a => a.PlannedTeamSlot)
-                    .ThenInclude(pts => pts.Role)
-                .Include(a => a.Employee)
-                    .ThenInclude(e => e.Role)
-                .Include(a => a.Project)
-                    .ThenInclude(p => p.Client)
-                .Where(a => a.PlannedTeamSlotId == plannedTeamSlotId &&
-                           //a.Employee.RoleId == roleId &&
-                           !a.IsDeleted &&
-                           a.Status != AssignmentStatus.Cancelled)
-                .OrderBy(a => a.StartDate)
-                .ToListAsync();
+                .Include(pts => pts.Role)
+                .FirstOrDefaultAsync(pts => pts.Id == plannedTeamSlotId);
+            if (slot == null)
+            {
+                // Slot not found
+                return new List<ActualAssignmentDto>();
+            }
+
+            var assignments = await _context.ActualAssignments
+            .AsNoTracking()
+            .Include(a => a.PlannedTeamSlot)
+                .ThenInclude(pts => pts.Project)
+            .Include(a => a.PlannedTeamSlot)
+                .ThenInclude(pts => pts.Role)
+            .Include(a => a.Employee)
+                .ThenInclude(e => e.Role)
+            .Include(a => a.Project)
+                .ThenInclude(p => p.Client)
+            .Where(a => a.PlannedTeamSlotId == plannedTeamSlotId &&
+                       //a.Employee.RoleId == roleId &&
+                       !a.IsDeleted &&
+                       a.Status != AssignmentStatus.Cancelled)
+            .OrderBy(a => a.StartDate)
+            .ToListAsync();
 
             var dtos = new List<ActualAssignmentDto>();
 
@@ -777,16 +787,17 @@ namespace ProjeX.Application.ActualAssignment
                 dto.SnapshotOthers = assignment.SnapshotOthers;
 
                 // NetProjectPrice = ProjectPrice after deducting 15% VAT
-                var netProjectPrice = assignment.Project.ProjectPrice * 0.85m;
+                var netProjectPrice = assignment.Project.ProjectPrice / 1.15m;
 
                 // Calculate actual cost using snapshot values
                 var monthsWorked = dto.DurationDays / 30.0m;
-                var commissionAmount = (commissionPercent / 100m) * netProjectPrice; // One-time commission
+                var commissionAmount = (commissionPercent / 100m) * netProjectPrice * (dto.UtilizationPercent / 100); // One-time commission
                 dto.ActualCost = ((salary + monthlyIncentive + tickets + hoteling + others) * monthsWorked) + commissionAmount;
 
-                // Calculate planned cost share using snapshot values (Option C)
-                // This represents the planned cost for THIS assignment based on snapshot values at creation time
-                dto.PlannedCostShare = ((salary + monthlyIncentive + tickets + hoteling + others) * monthsWorked) + commissionAmount;
+
+                // This represents the planned cost for THIS assignment based on planned slot values
+                // Note: This is NOT the total planned cost of the entire slot if it had been but depends on utilization %
+                dto.PlannedCostShare = ((slot.PlannedSalary + slot.PlannedIncentive + slot.PlannedTickets + slot.PlannedHoteling + slot.PlannedOthers) * monthsWorked) + ((slot.PlannedCommissionPercent / 100m) * netProjectPrice * (dto.UtilizationPercent / 100)); ;
 
                 // Calculate cost variance (positive = over budget, negative = under budget)
                 // Note: With Option C (using snapshot values for both), variance should be 0 unless snapshot values differ
